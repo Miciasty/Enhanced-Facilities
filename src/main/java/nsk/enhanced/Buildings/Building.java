@@ -3,22 +3,34 @@ package nsk.enhanced.Buildings;
 import nsk.enhanced.Regions.Region;
 import org.bukkit.Location;
 
+import javax.persistence.*;
 import java.util.ArrayList;
+import java.util.List;
 
+@Entity
+@Table(name = "faction_buildings")
 public class Building {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    protected int id;
+
+    @Column(nullable = false)
     protected String type;
 
-    protected int id;
+    @Column(nullable = false)
     protected String level;
 
+    @Column(nullable = false)
     protected int durability;
 
-    protected ArrayList<Region> regions;
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "building_id")
+    protected List<Region> regions;
 
     // --- --- --- --- // CONSTRUCTOR // --- --- --- --- //
 
-    public Building(String type, int id, String level, int durability, ArrayList<Region> regions) {
+    public Building(String type, int id, String level, int durability, List<Region> regions) {
         setType(type);
         setId(id);
         setLevel(level);
@@ -37,6 +49,8 @@ public class Building {
         this.regions = new ArrayList<>();
         this.regions.add(region);
     }
+
+    public Building() { /* Pusty konstruktor wymagany przez JPA */ }
 
     // --- --- --- --- // Setter's / Getter's // --- --- --- --- //
 
@@ -61,7 +75,7 @@ public class Building {
         this.regions.remove(region);
     }
 
-    public ArrayList<Region> getRegions() { return regions; }
+    public List<Region> getRegions() { return regions; }
 
     public boolean isInRegion(Location location) {
         for (Region region : regions) {

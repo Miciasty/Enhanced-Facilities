@@ -13,6 +13,7 @@
         <!-- Miejsce na klasy encji -->
         <mapping class="nsk.enhanced.Civilization.Faction" />
         <mapping class="nsk.enhanced.Buildings.Building" />
+        <mapping class="nsk.enhanced.Regions.Region" />
         <!-- Dodaj inne klasy encji tutaj -->
 
     </session-factory>
