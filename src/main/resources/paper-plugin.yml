@@ -1,0 +1,4 @@
+name: Enhanced Facilities
+version: '${project.version}'
+main: nsk.enhanced.EnhancedFacilities
+api-version: '1.20'
