@@ -1,6 +1,7 @@
 package nsk.enhanced.Civilization;
 
 import nsk.enhanced.Buildings.Building;
+import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
@@ -8,26 +9,25 @@ import org.bukkit.event.Listener;
 import java.util.ArrayList;
 import java.util.UUID;
 
+
 public class Faction implements Listener {
 
     private String name;
     private int id;
 
     private final ArrayList<Player> players;
-//  private final ArrayList<Player> citizens;
 
     private final ArrayList<Building> buildings;
 
     public Faction(int id, String name, ArrayList<Player> players, ArrayList<Building> buildings) {
         this.players = new ArrayList<>();
-        this.players.addAll(players);
-//      this.citizens = new ArrayList<>();
-
         this.buildings = new ArrayList<>();
+
+        this.players.addAll(players);
         this.buildings.addAll(buildings);
 
-        setName(name);
-        setId(id);
+        this.name = name;
+        this.id = id;
     }
 
     public Faction(int id, String name, Player player) {
@@ -36,14 +36,15 @@ public class Faction implements Listener {
 
         this.buildings = new ArrayList<>();
 
-        setName(name);
-        setId(id);
+        this.name = name;
+        this.id = id;
     }
 
     // --- --- --- --- // Setter's / Getter's // --- --- --- --- //
 
     private void setName(String name) {
         this.name = name;
+        PluginInstance.getInstance().saveFactionAsync(this);
     }
     public String getName() {
         return name;
@@ -60,10 +61,16 @@ public class Faction implements Listener {
 
     public ArrayList<Building> getBuildings() { return this.buildings; }
 
+    public void addBuildings(ArrayList<Building> buildings) {
+        this.buildings.addAll(buildings);
+        PluginInstance.getInstance().saveFactionAsync(this);
+    }
+
     private void addBuilding(String type, String level, int durability, ArrayList<Region> regions) {
         int id = buildings.size();
 
         this.buildings.add( new Building(type, id, level, durability, regions) );
+        PluginInstance.getInstance().saveFactionAsync(this);
     }
 
     public Building getBuilding(int id) {
@@ -90,8 +97,14 @@ public class Faction implements Listener {
 
     public ArrayList<Player> getPlayers() { return this.players; }
 
+    public void addPlayers(ArrayList<Player> players) {
+        this.players.addAll(players);
+        PluginInstance.getInstance().saveFactionAsync(this);
+    }
+
     private void addPlayer(Player player) {
         this.players.add(player);
+        PluginInstance.getInstance().saveFactionAsync(this);
     }
     public Player getPlayer(String name) {
         for (Player p : this.players) {

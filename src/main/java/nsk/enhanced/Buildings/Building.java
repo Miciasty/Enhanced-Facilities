@@ -54,9 +54,13 @@ public class Building {
 
     // --- --- --- --- // Regions // --- --- --- --- //
 
-    private void addRegion(Region region) {
+    public void addRegion(Region region) {
         this.regions.add(region);
     }
+    public void removeRegion(Region region) {
+        this.regions.remove(region);
+    }
+
     public ArrayList<Region> getRegions() { return regions; }
 
     public boolean isInRegion(Location location) {

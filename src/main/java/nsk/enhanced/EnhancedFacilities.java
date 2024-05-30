@@ -2,10 +2,12 @@ package nsk.enhanced;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Civilization.Faction;
+import nsk.enhanced.Methods.Database;
 import nsk.enhanced.Methods.MenuInstance;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
@@ -21,12 +23,12 @@ import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
@@ -68,9 +70,10 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         this.getCommand("ef").setExecutor(this);
         Bukkit.getPluginManager().registerEvents(this,this);
 
+        startAutoSaveTask();
     }
 
-    public void uploadFactions() {
+    private void uploadFactions() {
         String url = "mysql://localhost:3306/enhanced-facilities";
         String user = "root";
         String password = "root";
@@ -81,69 +84,28 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             String query = "SELECT * FROM factions";
             ResultSet resultSet = statement.executeQuery(query);
 
+            Gson gson = new GsonBuilder().create();
+
             while (resultSet.next()) {
                 int id = resultSet.getInt("id");
                 String name = resultSet.getString("name");
+                String playersJson = resultSet.getString("players");
+                String buildingsJson = resultSet.getString("buildings");
+
+                ArrayList<UUID> playerUUIDs = gson.fromJson(playersJson, new TypeToken<ArrayList<UUID>>(){}.getType());
+                ArrayList<Building> buildings = gson.fromJson(buildingsJson, new TypeToken<ArrayList<Building>>(){}.getType());
 
                 ArrayList<Player> players = new ArrayList<>();
-            //  ArrayList<Player> citizens = new ArrayList<>();
-                ArrayList<Building> buildings = new ArrayList<>();
 
-            // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
-
-                String playerQuery = "SELECT name FROM players WHERE factionId = " + id;
-                ResultSet playerResultSet = statement.executeQuery(playerQuery);
-
-                while (playerResultSet.next()) {
-                    String playerName = playerResultSet.getString("playerName");
-                    Player player = Bukkit.getPlayer(playerName);
+                for (UUID playerUUID : playerUUIDs) {
+                    Player player = Bukkit.getPlayer(playerUUID);
                     if (player != null) {
                         players.add(player);
                     }
                 }
-                playerResultSet.close();
 
-            // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
-            //      Upload Citizens
-            // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
-
-                String buildingQuery = "SELECT * FROM faction_buildings WHERE factionId = " + id;
-                ResultSet buildingResultSet = statement.executeQuery(buildingQuery);
-
-                Gson gson = new GsonBuilder().create();
-                String[] packages = {
-                        "nsk.enhanced.Buildings.Basic",
-                        "nsk.enhanced.Buildings.Environment",
-                        "nsk.enhanced.Buildings.Props",
-                        "nsk.enhanced.Buildings.Special",
-                };
-
-                while (buildingResultSet.next()) {
-                    String buildingType = buildingResultSet.getString("buildingType");
-                    String buildingData = buildingResultSet.getString("buildingData");
-
-                    Building building = null;
-                    boolean classFound = false;
-
-                    for (String packageName : packages) {
-                        try {
-                            Class<?> clazz = Class.forName(packageName + buildingType);
-                            building = (Building) gson.fromJson(buildingData, clazz);
-                            classFound = true;
-                            break;
-                        } catch (ClassNotFoundException e) {}
-                    }
-
-                    if (!classFound) {
-                        throw new IllegalArgumentException("Unknown building type: " + buildingType);
-                    }
-
-                    buildings.add(building);
-
-                }
-                buildingResultSet.close();
-
-            // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
+                Faction faction = new Faction(id, name,  players, buildings);
+                factions.add(faction);
             }
 
             resultSet.close();
@@ -152,7 +114,106 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
         } catch (Exception e) {
             getServer().getConsoleSender().sendMessage(e.getMessage());
+
+            if (e instanceof SQLException && e.getMessage().contains("Unknown database")) {
+                new Database("mysql://localhost:3306/enhanced", "root", "root");
+                uploadFactions();
+            }
         }
+    }
+
+    private void saveFaction(Faction faction) {
+        String url = "mysql://localhost:3306/enhanced-facilities";
+        String user = "root";
+        String password = "root";
+
+        Gson gson = new GsonBuilder().create();
+
+        String playersJson = gson.toJson(faction.getPlayers().stream().map(Player::getUniqueId).collect(Collectors.toList()));
+        String buildingsJson = gson.toJson(faction.getBuildings());
+
+        try {
+            Connection connection = DriverManager.getConnection(url, user, password);
+            String query =  "INSERT INTO `factions` (id,name, players, buildings) VALUES (?,?,?,?)" +
+                            "ON DUPLICATE KEY UPDATE name = VALUES(name), players = VALUES(players), buildings = VALUES(buildings)";
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            statement.setInt(   1, faction.getId());
+            statement.setString(2, faction.getName());
+            statement.setString(3, playersJson);
+            statement.setString(4, buildingsJson);
+
+            statement.executeUpdate();
+            statement.close();
+            connection.close();
+
+        } catch (Exception e) {
+            getServer().getConsoleSender().sendMessage(e.getMessage());
+
+            if (e instanceof SQLException && e.getMessage().contains("Unknown database")) {
+                new Database("mysql://localhost:3306/enhanced", "root", "root");
+                saveFaction(faction);
+            }
+        }
+    }
+
+    public void saveFactionAsync(Faction faction) {
+
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            String url = "mysql://localhost:3306/enhanced-facilities";
+            String user = "root";
+            String password = "root";
+
+            Gson gson = new GsonBuilder().create();
+
+            String playersJson = gson.toJson(faction.getPlayers().stream().map(Player::getUniqueId).collect(Collectors.toList()));
+            String buildingsJson = gson.toJson(faction.getBuildings());
+
+            try {
+                Connection connection = DriverManager.getConnection(url, user, password);
+                String query =  "INSERT INTO `factions` (id,name, players, buildings) VALUES (?,?,?,?)" +
+                                "ON DUPLICATE KEY UPDATE name = VALUES(name), players = VALUES(players), buildings = VALUES(buildings)";
+                PreparedStatement statement = connection.prepareStatement(query);
+
+                statement.setInt(   1, faction.getId());
+                statement.setString(2, faction.getName());
+                statement.setString(3, playersJson);
+                statement.setString(4, buildingsJson);
+
+                statement.executeUpdate();
+                statement.close();
+                connection.close();
+
+            } catch (Exception e) {
+                getServer().getConsoleSender().sendMessage(e.getMessage());
+
+                if (e instanceof SQLException && e.getMessage().contains("Unknown database")) {
+                    new Database("mysql://localhost:3306/enhanced", "root", "root");
+                    saveFactionAsync(faction);
+                }
+            }
+        });
+
+    }
+
+    private void saveAllFactionsAsync(JavaPlugin plugin) {
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            for (Faction faction : factions) {
+                saveFaction(faction);
+            }
+            plugin.getLogger().info("All factions have been saved.");
+        });
+
+    }
+
+    private void startAutoSaveTask() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                saveAllFactionsAsync(EnhancedFacilities.this);
+            }
+        }.runTaskTimerAsynchronously(this,0L, 20L * 60 * 15);
     }
 
     public void consoleError(Exception e) {
@@ -172,7 +233,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        this.saveAllFactionsAsync(this);
     }
 
 
@@ -202,7 +263,9 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                         if (sender instanceof Player) {
                             Player player = (Player) sender;
                             int buildingId = Integer.parseInt(args[1]);
-                            //addRegionToBuilding(player, buildingID);
+                            addRegionToBuilding(player, buildingId);
+                            return true;
+
                         } else {
                             sender.sendMessage("This command can only be executed by a player.");
                             return true;
@@ -213,19 +276,24 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                     }
 
                 case "faction":
-                    if (args.length > 3 &&  args[2].equalsIgnoreCase("create")) {
+                    if (args.length > 2 &&  args[1].equalsIgnoreCase("create")) {
 
                         if (sender instanceof Player) {
                             Player player = (Player) sender;
                             int factionId = factions.size();
+                            String factionName = args[2];
 
-                            this.factions.add(new Faction(factionId, args[3], player));
+                            this.factions.add(new Faction(factionId, factionName, player));
+
+                            player.sendMessage("Faction " + factionName + " was created with ID " + factionId);
 
                         } else {
                             sender.sendMessage("This command can only be executed by a player.");
                             return true;
                         }
-
+                    } else {
+                        sender.sendMessage("Invalid arguments for building command");
+                        return false;
                     }
 
                 default:
@@ -282,7 +350,9 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             return;
         }
 
-        building.getRegions().add(region);
+        building.addRegion(region);
+
+
         player.sendMessage("Region added to building " + buildingId);
 
     }
