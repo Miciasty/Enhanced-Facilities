@@ -1,7 +1,11 @@
 package nsk.enhanced.Buildings;
 
+import nsk.enhanced.Civilization.Faction;
+import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
+import nsk.enhanced.Regions.Territory;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
 import javax.persistence.*;
 import java.util.ArrayList;
@@ -68,11 +72,60 @@ public class Building {
 
     // --- --- --- --- // Regions // --- --- --- --- //
 
+    public void addRegion(Region region, Player player) {
+        for (Region r : regions) {
+            if (r.overlaps(region)) {
+                player.sendMessage("This region overlaps already existing region in this building.");
+                return;
+            }
+        }
+
+        regions.add(region);
+        PluginInstance.getInstance().saveFactionFromBuilding(this);
+        player.sendMessage("This region was successfully added to this building.");
+
+    }
     public void addRegion(Region region) {
-        this.regions.add(region);
+        try {
+            for (Region r : regions) {
+                if (r.overlaps(region)) {
+                    throw new IllegalArgumentException("This region overlaps already existing region in this building.");
+                }
+            }
+            regions.add(region);
+            PluginInstance.getInstance().saveFactionFromBuilding(this);
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
+    }
+
+    public void removeRegion(int Id, Player player) {
+        for (Region r : regions) {
+            if (r.getId() == Id) {
+                regions.remove(r);
+                PluginInstance.getInstance().saveFactionFromBuilding(this);
+            }
+        }
+    }
+    public void removeRegion(Region region, Player player) {
+        if (regions.contains(region)) {
+            regions.remove(region);
+            PluginInstance.getInstance().saveFactionFromBuilding(this);
+        } else {
+            player.sendMessage("This region does not exist in this building.");
+        }
     }
     public void removeRegion(Region region) {
-        this.regions.remove(region);
+        try {
+            if (regions.contains(region)) {
+                this.regions.remove(region);
+                PluginInstance.getInstance().saveFactionFromBuilding(this);
+            } else {
+                throw new IllegalArgumentException("This region does not exist in this building.");
+            }
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public List<Region> getRegions() { return regions; }
@@ -81,6 +134,22 @@ public class Building {
         for (Region region : regions) {
             if (region.contains(location)) {
                 return true;
+            }
+        }
+        return false;
+    }
+
+    // --- --- --- --- // Territories // --- --- --- --- //
+
+    public boolean isInFactionTerritory(Faction faction) {
+
+        List<Territory> territories = faction.getTerritory();
+
+        for (Region region : regions) {
+            for (Territory territory : territories) {
+                if (territory.contains(region.getPointA()) && territory.contains(region.getPointB())) {
+                    return true;
+                }
             }
         }
         return false;

@@ -9,8 +9,8 @@ import org.bukkit.event.Listener;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "regions")
-public class Region implements Listener {
+@Table(name = "territories")
+public class Territory implements Listener {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,9 +26,9 @@ public class Region implements Listener {
     private String worldName;
 
 
-    public Region() { /* Pusty konstruktor wymagany przez JPA */ }
+    public Territory() { /* Pusty konstruktor wymagany przez JPA */ }
 
-    public Region(Location pointA, Location pointB) {
+    public Territory(Location pointA, Location pointB) {
 
         try {
             if (!pointA.getWorld().equals(pointB.getWorld())) {
@@ -97,7 +97,7 @@ public class Region implements Listener {
                 z >= minZ && z <= maxZ;
     }
 
-    public boolean overlaps(Region other) {
+    public boolean overlaps(Territory other) {
         if (!this.worldName.equals(other.worldName)) {
             return false;
         }

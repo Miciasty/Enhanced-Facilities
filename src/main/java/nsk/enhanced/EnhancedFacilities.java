@@ -91,7 +91,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         }
     }
 
-    private void saveFactionsToDatabase() {
+    /*private void saveFactionsToDatabase() {
         try (Session session = sessionFactory.openSession()) {
             session.beginTransaction();
             for (Faction faction : factions) {
@@ -101,7 +101,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         } catch (Exception e) {
             this.consoleError(e);
         }
-    }
+    }*/
 
     private void saveFaction(Faction faction) {
         try (Session session = sessionFactory.openSession()) {
@@ -139,6 +139,21 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             plugin.getLogger().info("All factions have been saved.");
         });
 
+    }
+
+    public void saveFactionFromBuilding(Building building) {
+        try {
+            for (Faction faction : factions) {
+                if (faction.getBuildings().contains(building)) {
+                    saveFaction(faction);
+                    return;
+                }
+            }
+            throw new IllegalArgumentException("Building doesn't belong to any faction!");
+
+        } catch (Exception e) {
+            this.consoleError(e);
+        }
     }
 
     private void startAutoSaveTask() {

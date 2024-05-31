@@ -3,7 +3,10 @@ package nsk.enhanced.Civilization;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
+import nsk.enhanced.Regions.Territory;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 
@@ -31,6 +34,10 @@ public class Faction implements Listener {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "faction_id")
     private List<Building> buildings;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "faction_id")
+    protected List<Territory> territories;
 
     public Faction(int id, String name, List<Player> players, List<Building> buildings) {
         this.playersUUID = new ArrayList<>();
@@ -84,11 +91,41 @@ public class Faction implements Listener {
         PluginInstance.getInstance().saveFactionAsync(this);
     }
 
-    private void addBuilding(String type, String level, int durability, List<Region> regions) {
+    public void addBuilding(String type, String level, int durability, List<Region> regions, Player player) {
         int id = buildings.size();
 
         this.buildings.add( new Building(type, id, level, durability, regions) );
         PluginInstance.getInstance().saveFactionAsync(this);
+        player.sendMessage("Building " + type + " was successfully added to the faction");
+    }
+
+    public void addBuilding(String type, String level, int durability, List<Region> regions) {
+        int id = buildings.size();
+
+        this.buildings.add( new Building(type, id, level, durability, regions) );
+        PluginInstance.getInstance().saveFactionAsync(this);
+    }
+
+    public void removeBuilding(Building building, Player player) {
+        if (this.buildings.contains(building)) {
+            this.buildings.remove(building);
+            PluginInstance.getInstance().saveFactionAsync(this);
+            player.sendMessage("Building was successfully removed");
+        } else {
+            player.sendMessage("Your faction doesn't possess this building");
+        }
+    }
+    public void removeBuilding(Building building) {
+        try {
+            if (this.buildings.contains(building)) {
+                this.buildings.remove(building);
+                PluginInstance.getInstance().saveFactionAsync(this);
+            } else {
+                throw new IllegalArgumentException("This building does not exist");
+            }
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public Building getBuilding(int id) {
@@ -131,20 +168,6 @@ public class Faction implements Listener {
         return players;
     }
 
-    public void addPlayers(List<Player> players) {
-
-        for (Player player : players) {
-            this.playersUUID.add( player.getUniqueId().toString() );
-        }
-
-        PluginInstance.getInstance().saveFactionAsync(this);
-    }
-
-    private void addPlayer(Player player) {
-        this.playersUUID.add(player.getUniqueId().toString());
-        PluginInstance.getInstance().saveFactionAsync(this);
-    }
-
     public Player getPlayer(String name) {
         for (String uuid : this.playersUUID) {
             if (Bukkit.getPlayer(uuid).equals(name)) {
@@ -162,10 +185,187 @@ public class Faction implements Listener {
         return null;
     }
 
+    public void addPlayer(UUID uuid, Player p) {
+        try {
+            Player target = Bukkit.getPlayer(uuid);
+
+            if (target.equals(uuid) && this.playersUUID.contains(uuid.toString())) {
+                playersUUID.add(uuid.toString());
+            } else {
+                throw new IllegalArgumentException("Player with uuid " + uuid + " does not exist");
+            }
+        } catch (Exception e) {
+            PluginInstance.getInstance().playerWarning(e,p);
+        }
+    }
+
+    public void addPlayer(String name, Player p) {
+        try {
+            Player target = Bukkit.getPlayer(name);
+
+            if(target.equals(name) && this.playersUUID.contains(target.getUniqueId().toString())) {
+                playersUUID.add(target.getUniqueId().toString());
+            } else {
+                throw new IllegalArgumentException("Player with that name doesn't exists.");
+            }
+        } catch (Exception e) {
+            PluginInstance.getInstance().playerWarning(e,p);
+        }
+    }
+
+    private void addPlayers(List<Player> players) {
+
+        try {
+            int state = 0;
+            for (Player player : players) {
+                this.playersUUID.add( player.getUniqueId().toString() );
+                state++;
+            }
+
+            if (state == 0) {
+                throw new IllegalArgumentException("No players were added to the faction");
+            } else {
+                PluginInstance.getInstance().saveFactionAsync(this);
+            }
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
+
+    }
+
+    private void addPlayer(Player player) {
+        this.playersUUID.add(player.getUniqueId().toString());
+        PluginInstance.getInstance().saveFactionAsync(this);
+    }
+
+    public void removePlayer(String name, Player p) {
+        try {
+            Player target = Bukkit.getPlayer(name);
+
+            if (playersUUID.contains(target.getUniqueId().toString())) {
+                playersUUID.remove(target.getUniqueId().toString());
+            } else {
+                throw new IllegalArgumentException("Player with name " + name + " doesn't belong to the faction");
+            }
+        } catch (Exception e) {
+            PluginInstance.getInstance().playerWarning(e, p);
+        }
+    }
+
+    public void removePlayer(UUID uuid, Player p) {
+        try {
+            Player target = Bukkit.getPlayer(uuid);
+
+            if(target.getUniqueId().equals(p.getUniqueId())) {
+                playersUUID.remove(uuid.toString());
+                PluginInstance.getInstance().saveFactionAsync(this);
+            } else {
+                throw new IllegalArgumentException("Player with that uuid doesn't belong to the faction.");
+            }
+        } catch (Exception e) {
+            PluginInstance.getInstance().playerWarning(e, p);
+        }
+    }
+
+    private void removePlayers(List<Player> players) {
+        for (Player player : players) {
+            try {
+                if (playersUUID.contains(player.getUniqueId().toString())) {
+                    playersUUID.remove(player.getUniqueId().toString());
+                    PluginInstance.getInstance().saveFactionAsync(this);
+                } else {
+                    throw new IllegalArgumentException("Player with uuid " + player.getUniqueId() + " doesn't belong to the faction");
+                }
+            } catch (Exception e) {
+                PluginInstance.getInstance().consoleError(e);
+            }
+        }
+    }
+
+    private void removePlayer(Player player) {
+        try {
+            if (playersUUID.contains(player.getUniqueId().toString())) {
+                playersUUID.remove(player.getUniqueId().toString());
+                PluginInstance.getInstance().saveFactionAsync(this);
+            } else {
+                throw new IllegalArgumentException("Player with that uuid " + player.getUniqueId() + " doesn't belong to the faction");
+            }
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
+    }
+
     public boolean isFactionPlayer(Player player) {
 
         return this.playersUUID.contains(player.getUniqueId().toString());
 
     }
 
+    // --- --- --- --- // Faction Territory // --- --- --- --- //
+
+    public List<Territory> getTerritory() {
+        return this.territories;
+    }
+
+    public void addChunkAsTerritory(Player player) {
+        Chunk chunk = player.getLocation().getChunk();
+        Location pointA = chunk.getBlock(0, 0, 0).getLocation();
+        Location pointB = chunk.getBlock(15, 255, 15).getLocation();
+
+        Territory newTerritory = new Territory(pointA, pointB);
+
+        for (Territory territory : this.territories) {
+            if (territory.overlaps(newTerritory)) {
+                player.sendMessage("This chunk is already claimed by another territory.");
+                return;
+            }
+        }
+
+        this.territories.add(newTerritory);
+        PluginInstance.getInstance().saveFactionAsync(this);
+        player.sendMessage("Chunk claimed successfully.");
+    }
+
+    /*public void addTerritory(Location pointA, Location pointB, Player player) {
+        Territory newTerritory = new Territory(pointA, pointB);
+
+        for (Territory territory : this.territories) {
+            if (territory.overlaps(newTerritory)) {
+                player.sendMessage("This territory is already claimed by another territory.");
+                return;
+            }
+        }
+
+        this.territories.add(newTerritory);
+        PluginInstance.getInstance().saveFactionAsync(this);
+        player.sendMessage("Territory claimed successfully.");
+    }*/
+
+    public void removeChunkFromTerritory(Player player) {
+        Chunk chunk = player.getLocation().getChunk();
+        Location pointA = chunk.getBlock(0, 0, 0).getLocation();
+        Location pointB = chunk.getBlock(15, 255, 15).getLocation();
+
+        for (Territory territory : this.territories) {
+            if (territory.getPointA().equals(pointA) && territory.getPointB().equals(pointB)) {
+                this.territories.remove(territory);
+                PluginInstance.getInstance().saveFactionAsync(this);
+                player.sendMessage("Chunk removed from territory successfully.");
+            } else {
+                player.sendMessage("This chunk doesn't belong to this faction.");
+            }
+        }
+    }
+
+    public void removeTerritoryById(int id, Player player) {
+        for (Territory territory : this.territories) {
+            if (territory.getId() == id) {
+                this.territories.remove(territory);
+                PluginInstance.getInstance().saveFactionAsync(this);
+                player.sendMessage("Territory with Id " + id + " removed successfully.");
+            } else {
+                player.sendMessage("Territory with Id doesn't exists.");
+            }
+        }
+    }
 }
