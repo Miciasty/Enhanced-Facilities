@@ -3,7 +3,9 @@ package nsk.enhanced.Civilization;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
+import nsk.enhanced.Regions.Restriction;
 import nsk.enhanced.Regions.Territory;
+import nsk.enhanced.Regions.restrictions.WarRestriction;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -38,6 +40,10 @@ public class Faction implements Listener {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "faction_id")
     protected List<Territory> territories;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "faction_id")
+    private List<Restriction> restrictions;
 
     public Faction(int id, String name, List<Player> players, List<Building> buildings) {
         this.playersUUID = new ArrayList<>();
@@ -233,7 +239,7 @@ public class Faction implements Listener {
 
     }
 
-    private void addPlayer(Player player) {
+    public void addPlayer(Player player) {
         this.playersUUID.add(player.getUniqueId().toString());
         PluginInstance.getInstance().saveFactionAsync(this);
     }
@@ -282,7 +288,7 @@ public class Faction implements Listener {
         }
     }
 
-    private void removePlayer(Player player) {
+    public void removePlayer(Player player) {
         try {
             if (playersUUID.contains(player.getUniqueId().toString())) {
                 playersUUID.remove(player.getUniqueId().toString());
@@ -367,5 +373,75 @@ public class Faction implements Listener {
                 player.sendMessage("Territory with Id doesn't exists.");
             }
         }
+    }
+
+    // --- --- --- --- // Faction Restrictions // --- --- --- --- //
+
+    public List<Restriction> getRestrictions() {
+        return restrictions;
+    }
+
+    public void addRestriction(Restriction restriction) {
+        this.restrictions.add(restriction);
+    }
+
+    public void removeRestriction(Restriction restriction) {
+        this.restrictions.remove(restriction);
+    }
+
+    public boolean hasRestriction(String name) {
+        for (Restriction restriction : restrictions) {
+            if (restriction.getName().equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isRestricted(String name) {
+        for (Restriction restriction : restrictions) {
+            if (restriction.getName().equals(name)) {
+                return restriction.isActive();
+            }
+        }
+        return false;
+    }
+
+    // --- --- --- --- // Methods // --- --- --- --- //
+
+    public void declareWar(Faction enemy) {
+
+        WarRestriction war = new WarRestriction(Restriction.RestrictionType.WAR, true, enemy.getId());
+        this.restrictions.add(war);
+
+        WarRestriction war2 = new WarRestriction(Restriction.RestrictionType.WAR, true, this.getId());
+        enemy.restrictions.add(war2);
+
+        for (String uuid : this.playersUUID) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                player.sendMessage("Your faction has declared a war to " + enemy.getName());
+            }
+        }
+
+        for (String uuid : enemy.playersUUID) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                player.sendMessage(this.getName() + " has declared a war to your faction.");
+            }
+        }
+    }
+
+    public boolean isAtWarWith(Faction enemy) {
+        for (Restriction restriction : restrictions) {
+            if (restriction instanceof WarRestriction) {
+                WarRestriction war = (WarRestriction) restriction;
+
+                if (war.getEnemyFactionID() == enemy.getId() && war.isActive()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

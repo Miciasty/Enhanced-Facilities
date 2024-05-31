@@ -7,6 +7,7 @@ import org.bukkit.World;
 import org.bukkit.event.Listener;
 
 import javax.persistence.*;
+import java.util.List;
 
 @Entity
 @Table(name = "regions")
@@ -45,6 +46,8 @@ public class Region implements Listener {
             PluginInstance.getInstance().consoleError(e);
         }
     }
+
+    // --- --- --- --- // Setter's / Getter's // --- --- --- --- //
 
     public int getId() {
         return id;
@@ -96,6 +99,8 @@ public class Region implements Listener {
                 y >= minY && y <= maxY &&
                 z >= minZ && z <= maxZ;
     }
+
+    // --- --- --- --- // Methods // --- --- --- --- //
 
     public boolean overlaps(Region other) {
         if (!this.worldName.equals(other.worldName)) {

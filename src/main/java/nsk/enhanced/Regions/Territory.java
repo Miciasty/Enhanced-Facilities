@@ -7,6 +7,7 @@ import org.bukkit.World;
 import org.bukkit.event.Listener;
 
 import javax.persistence.*;
+import java.util.List;
 
 @Entity
 @Table(name = "territories")
@@ -24,6 +25,10 @@ public class Territory implements Listener {
 
     @Column(nullable = false)
     private String worldName;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "territory_id")
+    private List<Restriction> restrictions;
 
 
     public Territory() { /* Pusty konstruktor wymagany przez JPA */ }
@@ -45,6 +50,8 @@ public class Territory implements Listener {
             PluginInstance.getInstance().consoleError(e);
         }
     }
+
+    // --- --- --- --- // Setter's / Getter's // --- --- --- --- //
 
     public int getId() {
         return id;
@@ -96,6 +103,8 @@ public class Territory implements Listener {
                 y >= minY && y <= maxY &&
                 z >= minZ && z <= maxZ;
     }
+
+    // --- --- --- --- // Methods // --- --- --- --- //
 
     public boolean overlaps(Territory other) {
         if (!this.worldName.equals(other.worldName)) {

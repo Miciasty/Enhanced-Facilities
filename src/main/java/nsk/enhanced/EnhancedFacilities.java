@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Civilization.Faction;
+import nsk.enhanced.Civilization.Invitation;
 import nsk.enhanced.Methods.MenuInstance;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
@@ -28,10 +29,13 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
-    private ArrayList<Faction> factions = new ArrayList<>();
+    private List<Faction> factions = new ArrayList<>();
+    private List<Invitation> invitations = new ArrayList<>();
+
     private SessionFactory sessionFactory;
 
     @Override
@@ -185,84 +189,6 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         this.saveAllFactionsAsync(this);
     }
 
-
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("ef")) {
-
-            if (args.length == 0) {
-                return false;
-            }
-
-            switch (args[0].toLowerCase()) {
-                case "wand":
-                    if (sender instanceof Player) {
-                        Player player = (Player) sender;
-                        giveRegionWand(player);
-                        return true;
-                    } else {
-                        sender.sendMessage("This command can only be executed by a player.");
-                        return true;
-                    }
-
-                case "building":
-                    if (args.length > 3 &&  args[2].equalsIgnoreCase("add") &&
-                        args[3].equalsIgnoreCase("region")) {
-
-                        if (sender instanceof Player) {
-                            Player player = (Player) sender;
-                            int buildingId = Integer.parseInt(args[1]);
-                            addRegionToBuilding(player, buildingId);
-                            return true;
-
-                        } else {
-                            sender.sendMessage("This command can only be executed by a player.");
-                            return true;
-                        }
-                    } else {
-                        sender.sendMessage("Invalid arguments for building command");
-                        return false;
-                    }
-
-                case "faction":
-                    if (args.length > 2 &&  args[1].equalsIgnoreCase("create")) {
-
-                        if (sender instanceof Player) {
-                            Player player = (Player) sender;
-                            int factionId = factions.size();
-                            String factionName = args[2];
-
-                            this.factions.add(new Faction(factionId, factionName, player));
-
-                            player.sendMessage("Faction " + factionName + " was created with ID " + factionId);
-
-                        } else {
-                            sender.sendMessage("This command can only be executed by a player.");
-                            return true;
-                        }
-                    } else {
-                        sender.sendMessage("Invalid arguments for building command");
-                        return false;
-                    }
-
-                default:
-                    if (sender instanceof Player) {
-                        Player player = (Player) sender;
-                        MenuInstance menuInstance = new MenuInstance();
-
-                        menuInstance.openMenu(player);
-                        return true;
-                    } else if (sender instanceof ConsoleCommandSender) {
-                        sender.sendMessage("Invalid arguments for building command");
-                        return true;
-                    }
-                    return false;
-            }
-        }
-
-        return false;
-    }
-
     private void giveRegionWand(Player player) {
         ItemStack wand = new ItemStack(Material.BLAZE_ROD);
         ItemMeta meta = wand.getItemMeta();
@@ -313,6 +239,228 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             }
         }
         return null;
+    }
+
+    private Invitation getInvitationForPlayer(Player player) {
+        for (Invitation invitation : this.invitations) {
+            if (invitation.isInvited(player)) {
+                return invitation;
+            }
+        }
+        return null;
+    }
+
+    private void sentInvitationForPlayer(UUID uuid, Faction faction) {
+
+        Player target = Bukkit.getPlayer(uuid);
+
+        if (target != null ){
+
+            this.invitations.add(new Invitation(target, faction));
+
+            Component ENTRY = MiniMessage.miniMessage().deserialize("<green>You were invited to faction called</green> ");
+            Component FACTION = MiniMessage.miniMessage().deserialize("<white>" + faction.getName() + "</white>. ");
+            Component ACCEPT = MiniMessage.miniMessage().deserialize("<yellow><click:run_command:/ef accept>Accept</click></yellow> ");
+            Component DECLINE  = MiniMessage.miniMessage().deserialize("<red><click:run_command:/ef decline>Decline</click></red>");
+
+            target.sendMessage(ENTRY.append(FACTION).append(ACCEPT).append(DECLINE));
+
+        }
+    }
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
+    /*
+                   dP""b8      dP"Yb      8b    d8     8b    d8        db        88b 88     8888b.
+                  dP   `"     dP   Yb     88b  d88     88b  d88       dPYb       88Yb88      8I  Yb
+                  Yb          Yb   dP     88YbdP88     88YbdP88      dP__Yb      88 Y88      8I  dY
+                   YboodP      YbodP      88 YY 88     88 YY 88     dP""""Yb     88  Y8     8888Y"
+    */
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equalsIgnoreCase("ef")) {
+
+            if (args.length == 0) {
+                return false;
+            }
+
+            switch (args[0].toLowerCase()) {
+                case "wand":
+                    if (sender instanceof Player) {
+                        Player player = (Player) sender;
+                        giveRegionWand(player);
+                        return true;
+                    } else {
+                        sender.sendMessage("This command can only be executed by a player.");
+                        return true;
+                    }
+
+                case "building":
+                    if (args.length > 3 &&  args[2].equalsIgnoreCase("add") &&
+                            args[3].equalsIgnoreCase("region")) {
+
+                        if (sender instanceof Player) {
+                            Player player = (Player) sender;
+                            int buildingId = Integer.parseInt(args[1]);
+                            addRegionToBuilding(player, buildingId);
+                            return true;
+
+                        } else {
+                            sender.sendMessage("This command can only be executed by a player.");
+                            return true;
+                        }
+                    } else {
+                        sender.sendMessage("Invalid arguments for building command");
+                        return false;
+                    }
+
+                case "faction":
+
+                    if (args.length == 2) {
+                        return false;
+                    }
+
+                    switch (args[1].toLowerCase()) {
+                        case "create":
+                            if (sender instanceof Player) {
+                                Player player = (Player) sender;
+                                int factionId = factions.size();
+                                String factionName = args[2];
+
+                                this.factions.add(new Faction(factionId, factionName, player));
+
+                                player.sendMessage("Faction " + factionName + " was created with ID " + factionId);
+
+                            } else {
+                                sender.sendMessage("This command can only be executed by a player.");
+                                return true;
+                            }
+
+                        case "invite":
+                            if (sender instanceof Player && args.length == 3) {
+                                Player player = (Player) sender;
+                                Faction faction = getFactionForPlayer(player);
+
+                                if (faction == null) {
+                                    player.sendMessage("You are not part of any faction.");
+                                } else {
+                                    Player invited = Bukkit.getPlayer(args[2]);
+
+                                    if (invited == null) {
+                                        player.sendMessage("This player is not on the server.");
+                                    } else {
+                                        sentInvitationForPlayer(invited.getUniqueId(), faction);
+                                        player.sendMessage("Player " + invited.getName() + " has been invited to faction " + faction.getName());
+                                    }
+                                }
+
+                            } else {
+                                sender.sendMessage("This command can only be executed by a player.");
+                                return true;
+                            }
+                    }
+
+                case "accept":
+                    if (sender instanceof Player) {
+                        Player player = (Player) sender;
+                        Faction faction = getFactionForPlayer(player);
+
+                        Invitation invitation = getInvitationForPlayer(player);
+
+                        if (invitation == null) {
+                            player.sendMessage("You didn't receive any invitations.");
+                            return false;
+                        }
+
+                        if (faction != null && invitation.status()){
+                            Component MESSAGE = MiniMessage.miniMessage().deserialize("<red>Do you want to leave faction called</red> ");
+                            Component FACTION = MiniMessage.miniMessage().deserialize("<yellow>" + faction.getName() + "</yellow> ");
+                            Component STAY = MiniMessage.miniMessage().deserialize("<yellow><click:run_command:/ef decline>Stay</click></yellow> ");
+                            Component LEAVE = MiniMessage.miniMessage().deserialize("<red><click:run_command:/ef autojoin>Leave</click></red>");
+
+                            player.sendMessage("You are already part of faction called " + faction.getName());
+                            player.sendMessage(MESSAGE.append(FACTION).append(STAY).append(LEAVE));
+                        }
+                    } else {
+                        sender.sendMessage("This command can only be executed by a player.");
+                        return true;
+                    }
+
+                case "decline":
+                    if (sender instanceof Player) {
+                        Player player = (Player) sender;
+                        Invitation invitation = getInvitationForPlayer(player);
+
+                        if (invitation == null) {
+                            player.sendMessage("You didn't receive any invitations.");
+                        } else {
+                            player.sendMessage("You decline your invitation to join " + invitation.getFaction().getName());
+                            invitations.remove(invitation);
+                        }
+
+                    } else {
+                        sender.sendMessage("This command can only be executed by a player.");
+                        return true;
+                    }
+
+                case "leave":
+                    if (sender instanceof Player) {
+                        Player player = (Player) sender;
+                        Faction faction = getFactionForPlayer(player);
+
+                        if (faction == null) {
+                            player.sendMessage("You are not part of any faction.");
+                            return true;
+                        } else {
+                            faction.removePlayer(player);
+                        }
+                    } else {
+                        sender.sendMessage("This command can only be executed by a player.");
+                    }
+
+                case "autojoin":
+                    if (sender instanceof Player) {
+                        Player player = (Player) sender;
+                        Faction actualFaction = getFactionForPlayer(player);
+
+                        if (actualFaction == null) {
+                            player.sendMessage("You are not part of any faction.");
+                            return true;
+                        } else {
+                            actualFaction.removePlayer(player);
+                        }
+
+                        Invitation invitation = getInvitationForPlayer(player);
+
+                        if (invitation == null) {
+                            player.sendMessage("You didn't receive any invitations.");
+                            return true;
+                        } else {
+                            invitation.getFaction().addPlayer(player);
+                            invitations.remove(invitation);
+                        }
+                    } else {
+                        sender.sendMessage("This command can only be executed by a player.");
+                    }
+
+
+                default:
+                    if (sender instanceof Player) {
+                        Player player = (Player) sender;
+                        MenuInstance menuInstance = new MenuInstance();
+
+                        menuInstance.openMenu(player);
+                        return true;
+                    } else if (sender instanceof ConsoleCommandSender) {
+                        sender.sendMessage("Invalid arguments for building command");
+                        return true;
+                    }
+                    return false;
+            }
+        }
+
+        return false;
     }
 
 }

@@ -15,6 +15,12 @@
         <mapping class="nsk.enhanced.Buildings.Building" />
         <mapping class="nsk.enhanced.Regions.Region" />
         <mapping class="nsk.enhanced.Regions.Territory" />
+
+        <mapping class="nsk.enhanced.Regions.Restriction" />
+        <!-- Klasy Restrykcji -->
+        <mapping class="nsk.enhanced.Regions.restrictions.WarRestriction" />
+
+
         <!-- Dodaj inne klasy encji tutaj -->
 
     </session-factory>
