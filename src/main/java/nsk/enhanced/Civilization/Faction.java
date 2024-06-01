@@ -1,11 +1,11 @@
 package nsk.enhanced.Civilization;
 
+import net.kyori.adventure.text.Component;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
 import nsk.enhanced.Regions.Restriction;
 import nsk.enhanced.Regions.Territory;
-import nsk.enhanced.Regions.restrictions.WarRestriction;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -45,9 +45,11 @@ public class Faction implements Listener {
     @JoinColumn(name = "faction_id")
     private List<Restriction> restrictions;
 
-    public Faction(int id, String name, List<Player> players, List<Building> buildings) {
+    public Faction(String name, List<Player> players, List<Building> buildings) {
         this.playersUUID = new ArrayList<>();
         this.buildings = new ArrayList<>();
+        this.territories = new ArrayList<>();
+        this.restrictions = new ArrayList<>();
 
         for (Player p : players) {
             this.playersUUID.add( p.getUniqueId().toString() );
@@ -56,17 +58,26 @@ public class Faction implements Listener {
         this.buildings.addAll(buildings);
 
         this.name = name;
-        this.id = id;
     }
 
-    public Faction(int id, String name, Player player) {
+    public Faction(String name, Player player) {
         this.playersUUID = new ArrayList<>();
         this.buildings = new ArrayList<>();
+        this.territories = new ArrayList<>();
+        this.restrictions = new ArrayList<>();
 
         this.playersUUID.add( player.getUniqueId().toString() );
 
         this.name = name;
-        this.id = id;
+    }
+
+    public Faction(String name) {
+        this.playersUUID = new ArrayList<>();
+        this.buildings = new ArrayList<>();
+        this.territories = new ArrayList<>();
+        this.restrictions = new ArrayList<>();
+
+        this.name = name;
     }
 
     public Faction() { /* Pusty konstruktor wymagany przez JPA */ }
@@ -307,6 +318,23 @@ public class Faction implements Listener {
 
     }
 
+    public void forEachPlayer(Component message) {
+        this.playersUUID.forEach(uuid -> {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                player.sendMessage(message);
+            }
+        });
+    }
+    public void forEachPlayer(Faction faction) {
+        this.playersUUID.forEach(uuid -> {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                player.sendMessage("Your faction " + this.getName() + " is now at war with " + faction.getName());
+            }
+        });
+    }
+
     // --- --- --- --- // Faction Territory // --- --- --- --- //
 
     public List<Territory> getTerritory() {
@@ -390,8 +418,9 @@ public class Faction implements Listener {
     }
 
     public boolean hasRestriction(String name) {
+
         for (Restriction restriction : restrictions) {
-            if (restriction.getName().equals(name)) {
+            if (restriction.toString().equals(name)) {
                 return true;
             }
         }
@@ -399,49 +428,41 @@ public class Faction implements Listener {
     }
 
     public boolean isRestricted(String name) {
-        for (Restriction restriction : restrictions) {
-            if (restriction.getName().equals(name)) {
-                return restriction.isActive();
-            }
+        if (this.hasRestriction(name)) {
+            return true;
+        } else {
+            return false;
         }
-        return false;
     }
 
     // --- --- --- --- // Methods // --- --- --- --- //
 
     public void declareWar(Faction enemy) {
 
-        WarRestriction war = new WarRestriction(Restriction.RestrictionType.WAR, true, enemy.getId());
-        this.restrictions.add(war);
-
-        WarRestriction war2 = new WarRestriction(Restriction.RestrictionType.WAR, true, this.getId());
-        enemy.restrictions.add(war2);
-
-        for (String uuid : this.playersUUID) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                player.sendMessage("Your faction has declared a war to " + enemy.getName());
+        for (Restriction restriction : this.restrictions) {
+            if (restriction.getType().equals(Restriction.RestrictionType.BLOCK_PLACE)) {
+                this.restrictions.remove(restriction);
+            }
+            if (restriction.getType().equals(Restriction.RestrictionType.BLOCK_BREAK)) {
+                this.restrictions.remove(restriction);
             }
         }
 
-        for (String uuid : enemy.playersUUID) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                player.sendMessage(this.getName() + " has declared a war to your faction.");
+        for (Restriction restriction : enemy.restrictions) {
+            if (restriction.getType().equals(Restriction.RestrictionType.BLOCK_PLACE)) {
+                enemy.restrictions.remove(restriction);
+            }
+            if (restriction.getType().equals(Restriction.RestrictionType.BLOCK_BREAK)) {
+                enemy.restrictions.remove(restriction);
             }
         }
+
+        this.forEachPlayer(enemy);
+        enemy.forEachPlayer(this);
+
     }
 
     public boolean isAtWarWith(Faction enemy) {
-        for (Restriction restriction : restrictions) {
-            if (restriction instanceof WarRestriction) {
-                WarRestriction war = (WarRestriction) restriction;
-
-                if (war.getEnemyFactionID() == enemy.getId() && war.isActive()) {
-                    return true;
-                }
-            }
-        }
         return false;
     }
 }

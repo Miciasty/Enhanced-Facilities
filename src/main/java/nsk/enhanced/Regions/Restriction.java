@@ -15,14 +15,11 @@ public class Restriction {
     @Enumerated(EnumType.STRING)
     private RestrictionType type;
 
-    @Column(nullable = false)
-    private boolean value;
 
     public Restriction() { /* Pusty konstruktor wymagany przez JPA */ };
 
-    public Restriction(RestrictionType type, boolean value) {
-        this.setName(type);
-        this.setValue(value);
+    public Restriction(RestrictionType type) {
+        this.setType(type);
     }
 
     // --- --- --- --- // Setter's / Getter's // --- --- --- --- //
@@ -30,34 +27,33 @@ public class Restriction {
     public int getId() {
         return id;
     }
-    public RestrictionType getName() {
+    public RestrictionType getType() {
         return this.type;
     }
 
-    private void setId(int id) {
-        this.id = id;
-    }
-    private void setName(RestrictionType name) {
+    private void setType(RestrictionType name) {
         this.type = name;
-    }
-    private void setValue(boolean value) {
-        this.value = value;
     }
 
     // --- --- --- --- // Methods // --- --- --- --- //
 
-    public boolean isActive() {
-        return this.value;
+    public String toString() {
+        return this.type.toString();
     }
 
     // --- --- --- --- // Allowed Restrictions // --- --- --- --- //
 
     public enum RestrictionType {
-        WAR,
         MOB_SPAWNING,
         BLOCK_BREAK,
         BLOCK_PLACE,
-        PVP,
+
+        FRIENDLY_FIRE,
+
+        NULLIFY_DAMAGE,
+        NULLIFY_EXPLOSION,
+
+        DENY_ENTRY
     }
 
 }

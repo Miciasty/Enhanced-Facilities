@@ -232,7 +232,16 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
     }
 
-    private Faction getFactionForPlayer(Player player) {
+    public Faction getFactionForBuilding(Building building) {
+        for (Faction faction : this.factions) {
+            if (faction.getBuildings().contains(building)) {
+                return faction;
+            }
+        }
+        return null;
+    }
+
+    public Faction getFactionForPlayer(Player player) {
         for (Faction faction : this.factions) {
             if (faction.isFactionPlayer(player)) {
                 return faction;
@@ -325,12 +334,12 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                         case "create":
                             if (sender instanceof Player) {
                                 Player player = (Player) sender;
-                                int factionId = factions.size();
+                                //int factionId = factions.size();
                                 String factionName = args[2];
 
-                                this.factions.add(new Faction(factionId, factionName, player));
+                                this.factions.add(new Faction(factionName, player));
 
-                                player.sendMessage("Faction " + factionName + " was created with ID " + factionId);
+                                player.sendMessage("Faction " + factionName + " was created with ID " + factions.size());
 
                             } else {
                                 sender.sendMessage("This command can only be executed by a player.");

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DdlMappings">
+    <mapping uuid="284286db-49e8-4efb-b0a5-11737655a107" name="Chunkserve Mapping">
+      <data-sources db="05ea3518-be61-4cc6-9d18-feb3865e3eb1" />
+      <scope>
+        <node kind="database" qname="@">
+          <node kind="schema" negative="1" />
+        </node>
+      </scope>
+    </mapping>
+  </component>
+</project>

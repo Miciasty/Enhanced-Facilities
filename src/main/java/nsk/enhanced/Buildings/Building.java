@@ -3,6 +3,7 @@ package nsk.enhanced.Buildings;
 import nsk.enhanced.Civilization.Faction;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
+import nsk.enhanced.Regions.Restriction;
 import nsk.enhanced.Regions.Territory;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -31,6 +32,10 @@ public class Building {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "building_id")
     protected List<Region> regions;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "building_id")
+    private List<Restriction> restrictions;
 
     // --- --- --- --- // CONSTRUCTOR // --- --- --- --- //
 
@@ -139,6 +144,12 @@ public class Building {
         return false;
     }
 
+    // --- --- --- --- // Faction // --- --- --- --- //
+
+    public Faction getFaction() {
+        return PluginInstance.getInstance().getFactionForBuilding(this);
+    }
+
     // --- --- --- --- // Territories // --- --- --- --- //
 
     public boolean isInFactionTerritory(Faction faction) {
@@ -153,6 +164,52 @@ public class Building {
             }
         }
         return false;
+    }
+
+    // --- --- --- --- // Faction Restrictions // --- --- --- --- //
+
+    public List<Restriction> getRestrictions() {
+        return restrictions;
+    }
+
+    public void addRestriction(Restriction restriction) {
+        this.restrictions.add(restriction);
+    }
+
+    public void removeRestriction(Restriction restriction) {
+        this.restrictions.remove(restriction);
+    }
+
+    public boolean hasRestriction(String name) {
+
+        for (Restriction restriction : restrictions) {
+            if (restriction.toString().toUpperCase().equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isRestricted(String name) {
+
+        Faction faction = getFaction();
+
+        for (Restriction restriction : faction.getRestrictions()) {
+            if (restriction.toString().toUpperCase().equals(name)) {
+
+                if (this.hasRestriction(name)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        if (this.hasRestriction(name)) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
 }

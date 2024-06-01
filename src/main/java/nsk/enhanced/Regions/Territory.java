@@ -26,10 +26,6 @@ public class Territory implements Listener {
     @Column(nullable = false)
     private String worldName;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "territory_id")
-    private List<Restriction> restrictions;
-
 
     public Territory() { /* Pusty konstruktor wymagany przez JPA */ }
 
