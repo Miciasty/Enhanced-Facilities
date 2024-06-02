@@ -2,22 +2,32 @@ package nsk.enhanced;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import nsk.enhanced.Buildings.Basic.Sawmill;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Civilization.Faction;
 import nsk.enhanced.Civilization.Invitation;
-import nsk.enhanced.Civilization.status.atWar;
+import nsk.enhanced.Methods.Managers.SawmillManager;
 import nsk.enhanced.Methods.MenuInstance;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
+import nsk.enhanced.Regions.Restriction;
+import nsk.enhanced.Regions.Territory;
 import nsk.enhanced.Regions.system.RegionSelector;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -36,15 +46,28 @@ import java.util.concurrent.CompletableFuture;
 public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
     private List<Faction> factions = new ArrayList<>();
+    private List<Building> buildings = new ArrayList<>();
+
+    private List<Region> regionSelections = new ArrayList<>();
+
     private List<Invitation> invitations = new ArrayList<>();
 
     private SessionFactory sessionFactory;
+
+    private SawmillManager sawmillManager;
 
     @Override
     public void onEnable() {
 
         getServer().getPluginManager().registerEvents(this,this);
         sessionFactory = new Configuration().configure().buildSessionFactory();
+
+        // --- --- --- --- // Managers // --- --- --- --- //
+        sawmillManager = new SawmillManager();
+
+        // --- --- --- --- // Listeners // --- --- --- --- //
+        getServer().getPluginManager().registerEvents(sawmillManager,this);
+
 
         Component EF_L1 = MiniMessage.miniMessage().deserialize("<gradient:#9953aa:#172d5d>  _____           _                                         _ ");
         Component EF_L2 = MiniMessage.miniMessage().deserialize("<gradient:#9953aa:#172d5d> | ____|  _ __   | |__     __ _   _ __     ___    ___    __| |");
@@ -79,6 +102,17 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this,this);
 
         startAutoSaveTask();
+
+        // Start buildings schedulers;
+        for (Faction faction : factions) {
+
+            // All sawmills
+            int i = 0; for (Building building : faction.getBuildingsOfType("sawmill")) {
+                sawmillManager.addSawmill( (Sawmill) building );
+                i++;
+            }
+            this.consoleNotification(faction.getName() + ": Loaded " + i + " sawmills of all " + faction.getBuildingsOfType("sawmill"));
+        }
     }
 
     @Override
@@ -101,6 +135,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             this.consoleError(e);
         }
     }
+
     private void startAutoSaveTask() {
         new BukkitRunnable() {
             @Override
@@ -108,6 +143,14 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                 saveAllFactionsAsync(EnhancedFacilities.this);
             }
         }.runTaskTimerAsynchronously(this,0L, 20L * 60 * 15);
+    }
+
+    public void consoleNotification(String m) {
+        getServer().getConsoleSender().sendMessage(m);
+    }
+
+    public void consoleMessage(Exception e) {
+        getServer().getConsoleSender().sendMessage(e.getMessage());
     }
 
     public void consoleError(Exception e) {
@@ -255,6 +298,14 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         });
     }
     //       //       //       //       //       //       //       //       //       //       //       //       //
+    public Faction getFactionByID(int id) {
+        for (Faction faction : factions) {
+            if (faction.getId() == id) {
+                return faction;
+            }
+        }
+        return null;
+    }
     public Faction getFactionForBuilding(Building building) {
         for (Faction faction : this.factions) {
             if (faction.getBuildings().contains(building)) {
@@ -270,6 +321,109 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             }
         }
         return null;
+    }
+
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        Block block = event.getBlock();
+        Location location = block.getLocation();
+
+        for (Faction faction : factions) {
+            if (!faction.isFactionPlayer(player)) {
+                for (Territory territory : faction.getTerritory()) {
+                    if (territory.contains(location)) {
+                        for (Restriction restriction : faction.getRestrictions()) {
+                            if (restriction.getRestriction().equals(Restriction.RestrictionType.BLOCK_BREAK)) {
+                                event.setCancelled(true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent event) {
+        Player player = event.getPlayer();
+        Block block = event.getBlock();
+        Location location = block.getLocation();
+
+        for (Faction faction : factions) {
+            if (!faction.isFactionPlayer(player)) {
+                for (Territory territory : faction.getTerritory()) {
+                    if (territory.contains(location)) {
+                        for (Restriction restriction : faction.getRestrictions()) {
+                            if (restriction.getRestriction().equals(Restriction.RestrictionType.BLOCK_BREAK)) {
+                                event.setCancelled(true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void  onEntityDamagebyEntity(EntityDamageByEntityEvent event) {
+        if (event.getDamager() instanceof Player) {
+            Player attacker = (Player) event.getDamager();
+
+            if (event.getEntity() instanceof Player) {
+                Player victim = (Player) event.getEntity();
+
+                if (this.getFactionForPlayer(attacker).equals(this.getFactionForPlayer(victim))) {
+                    for (Restriction restriction : this.getFactionForPlayer(attacker).getRestrictions()) {
+                        if (restriction.getRestriction().equals(Restriction.RestrictionType.FRIENDLY_FIRE)) {
+                            event.setCancelled(true);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        Action action = event.getAction();
+        Location location = event.getClickedBlock().getLocation();
+
+        Player player = event.getPlayer();
+
+        switch (action) {
+            case RIGHT_CLICK_BLOCK:
+
+                for (Faction faction : factions) {
+                    if (!faction.isFactionPlayer(player)) {
+                        for (Territory territory : faction.getTerritory()) {
+                            if (territory.contains(location)) {
+                                for (Restriction restriction : faction.getRestrictions()) {
+                                    if (restriction.getRestriction().equals(Restriction.RestrictionType.INTERACT)) {
+                                        player.sendMessage("You are not permitted to interact on that territory.");
+                                        event.setCancelled(true);
+                                    } else {
+
+                                        if (event.getItem() == null || event.getItem().equals(Material.AIR)) { return; }
+                                        ItemStack item = event.getItem();
+                                        ItemMeta im = item.getItemMeta();
+
+                                        if (!im.hasDisplayName()) { return; }
+                                        Component itemName = im.displayName();
+
+                                        if (itemName.equals(Component.text("Region Wand"))) {
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+            case LEFT_CLICK_BLOCK:
+
+        }
     }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
@@ -332,6 +486,19 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             PluginInstance.getInstance().consoleError(e);
         }
 
+    }
+
+    public CompletableFuture<Block> lookForBlock(List<Region> regions, Material material) {
+        return CompletableFuture.supplyAsync(() -> {
+            for (Region region : regions) {
+                for (Block block : region.getBlocks()) {
+                    if (block.getType() == material) {
+                        return block;
+                    }
+                }
+            }
+            return null;
+        });
     }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //

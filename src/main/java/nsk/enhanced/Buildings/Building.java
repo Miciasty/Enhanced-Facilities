@@ -24,27 +24,22 @@ public class Building {
     protected int id;
 
     @Column(nullable = false)
-    protected String type;
-
-    @Column(nullable = false)
-    protected String level;
+    protected int level;
 
     @Column(nullable = false)
     protected int durability;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "building_id")
     protected List<Region> regions;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "building_id")
     private List<Restriction> restrictions;
 
     // --- --- --- --- // CONSTRUCTOR // --- --- --- --- //
 
-    public Building(String type, int id, String level, int durability, List<Region> regions) {
-        setType(type);
-        setId(id);
+    public Building(int level, int durability, List<Region> regions) {
         setLevel(level);
         setDurability(durability);
 
@@ -52,9 +47,7 @@ public class Building {
         this.regions.addAll(regions);
     }
 
-    public Building(String type, int id, String level, int durability, Region region) {
-        setType(type);
-        setId(id);
+    public Building(int level, int durability, Region region) {
         setLevel(level);
         setDurability(durability);
 
@@ -66,16 +59,17 @@ public class Building {
 
     // --- --- --- --- // Setter's / Getter's // --- --- --- --- //
 
-    protected void setType(String type) { this.type = type; }
-    public String getType() { return type; }
-
-    protected void setId(int id) { this.id = id; }
     public int getId() { return id; }
 
-    protected void setLevel(String level) { this.level = level; }
-    public String getLevel() { return level; }
+    public String getType() {
+        DiscriminatorValue value = this.getClass().getAnnotation(DiscriminatorValue.class);
+        return value == null ? "" : value.value();
+    }
 
-    protected void setDurability(int durability) { this.durability = durability; }
+    public void setLevel(int level) { this.level = level; }
+    public int getLevel() { return level; }
+
+    public void setDurability(int durability) { this.durability = durability; }
     public int getDurability() { return durability; }
 
     // --- --- --- --- // Regions // --- --- --- --- //

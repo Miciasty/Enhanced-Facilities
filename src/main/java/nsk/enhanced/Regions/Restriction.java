@@ -37,6 +37,10 @@ public class Restriction {
 
     // --- --- --- --- // Methods // --- --- --- --- //
 
+    public RestrictionType getRestriction() {
+        return this.type;
+    }
+
     public String toString() {
         return this.type.toString();
     }
@@ -47,6 +51,7 @@ public class Restriction {
         MOB_SPAWNING,
         BLOCK_BREAK,
         BLOCK_PLACE,
+        INTERACT,
 
         FRIENDLY_FIRE,
 

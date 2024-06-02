@@ -4,9 +4,12 @@ import nsk.enhanced.Methods.PluginInstance;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 
 import javax.persistence.*;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -102,6 +105,28 @@ public class Region implements Listener {
 
 
     // --- --- --- --- // Methods // --- --- --- --- //
+
+    public List<Block> getBlocks() {
+        List<Block> blocks = new ArrayList<>();
+        World world = getWorld();
+
+        int minX = (int) Math.min(xA, xB);
+        int maxX = (int) Math.max(xA, xB);
+        int minY = (int) Math.min(yA, yB);
+        int maxY = (int) Math.max(yA, yB);
+        int minZ = (int) Math.min(zA, zB);
+        int maxZ = (int) Math.max(zA, zB);
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    blocks.add(world.getBlockAt(x, y, z));
+                }
+            }
+        }
+
+        return blocks;
+    }
 
     public boolean overlaps(Region other) {
         if (!this.worldName.equals(other.worldName)) {

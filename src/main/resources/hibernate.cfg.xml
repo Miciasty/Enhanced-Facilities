@@ -25,6 +25,9 @@
         <!-- Statusy Frakcji -->
         <mapping class="nsk.enhanced.Civilization.status.atWar" />
 
+        <!-- Typy budynków -->
+        <mapping class="nsk.enhanced.Buildings.Basic.Sawmill" />
+
 
         <!-- Dodaj inne klasy encji tutaj -->
 

@@ -12,6 +12,8 @@ import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
+import org.hibernate.Session;
+import org.hibernate.SessionBuilder;
 
 import javax.persistence.*;
 import java.sql.SQLException;
@@ -31,28 +33,28 @@ public class Faction implements Listener {
     @Column(nullable = false)
     private String name;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "faction_players", joinColumns = @JoinColumn(name = "faction_id"))
     @Column(name = "player_uuid")
     private List<String> playersUUID;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "faction_id")
     private List<Building> buildings;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "faction_id")
     protected List<Territory> territories;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "faction_id")
     private List<Restriction> restrictions;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "attacker_id")
     private List<atWar> warsAsAttacker;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "defender_id")
     private List<atWar> warsAsDefender;
 
@@ -135,27 +137,38 @@ public class Faction implements Listener {
         });
     }
 
-    public void addBuilding(String type, String level, int durability, List<Region> regions, Player player) {
-        int id = buildings.size();
+    public void addBuilding(Building building) {
+        try {
+            this.buildings.add(building);
+            CompletableFuture.allOf(
+                    PluginInstance.getInstance().saveEntityAsync(this),
+                    PluginInstance.getInstance().saveEntityAsync(building)
+            ).exceptionally(e -> {
+                this.buildings.remove(building);
+                throw new IllegalStateException("Query failed! ", e);
+            });
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
 
-        Building newBuilding = new Building(type, id, level, durability, regions);
+    public void addBuilding(int level, int durability, List<Region> regions, Player player) {
+        Building newBuilding = new Building(level, durability, regions);
 
         this.buildings.add( newBuilding );
         CompletableFuture.allOf(
                 PluginInstance.getInstance().saveEntityAsync(this),
                 PluginInstance.getInstance().saveEntityAsync(newBuilding)
         ).thenRun(() -> {
-            player.sendMessage("Building " + type + " was successfully added to the faction");
+            player.sendMessage("Building was successfully added to the faction");
         }).exceptionally(e -> {
             this.buildings.remove(newBuilding);
             throw new IllegalStateException("Query failed! ", e);
         });
     }
 
-    public void addBuilding(String type, String level, int durability, List<Region> regions) {
-        int id = buildings.size();
-
-        Building newBuilding = new Building(type, id, level, durability, regions);
+    public void addBuilding(int level, int durability, List<Region> regions) {
+        Building newBuilding = new Building(level, durability, regions);
 
         this.buildings.add( newBuilding );
 
