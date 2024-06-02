@@ -2,6 +2,8 @@ package nsk.enhanced.Methods;
 
 import nsk.enhanced.EnhancedFacilities;
 
+import javax.persistence.EntityManager;
+
 public class PluginInstance {
 
     private static EnhancedFacilities instance;

@@ -5,6 +5,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Civilization.Faction;
 import nsk.enhanced.Civilization.Invitation;
+import nsk.enhanced.Civilization.status.atWar;
 import nsk.enhanced.Methods.MenuInstance;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
@@ -30,6 +31,7 @@ import javax.persistence.criteria.CriteriaQuery;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
@@ -79,6 +81,11 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         startAutoSaveTask();
     }
 
+    @Override
+    public void onDisable() {
+        this.saveAllFactionsAsync(this);
+    }
+
     private void loadFactionsFromDatabase() {
         try (Session session = sessionFactory.openSession()) {
             session.beginTransaction();
@@ -94,72 +101,6 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             this.consoleError(e);
         }
     }
-
-    /*private void saveFactionsToDatabase() {
-        try (Session session = sessionFactory.openSession()) {
-            session.beginTransaction();
-            for (Faction faction : factions) {
-                session.saveOrUpdate(faction);
-            }
-            session.getTransaction().commit();
-        } catch (Exception e) {
-            this.consoleError(e);
-        }
-    }*/
-
-    private void saveFaction(Faction faction) {
-        try (Session session = sessionFactory.openSession()) {
-            session.beginTransaction();
-
-            session.saveOrUpdate(faction);
-            session.getTransaction().commit();
-        } catch (Exception e) {
-            this.consoleError(e);
-        }
-    }
-
-    public void saveFactionAsync(Faction faction) {
-
-        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
-
-            try (Session session = sessionFactory.openSession()) {
-                session.beginTransaction();
-
-                session.saveOrUpdate(faction);
-                session.getTransaction().commit();
-            } catch (Exception e) {
-                this.consoleError(e);
-            }
-
-        });
-    }
-
-    private void saveAllFactionsAsync(JavaPlugin plugin) {
-
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            for (Faction faction : factions) {
-                saveFaction(faction);
-            }
-            plugin.getLogger().info("All factions have been saved.");
-        });
-
-    }
-
-    public void saveFactionFromBuilding(Building building) {
-        try {
-            for (Faction faction : factions) {
-                if (faction.getBuildings().contains(building)) {
-                    saveFaction(faction);
-                    return;
-                }
-            }
-            throw new IllegalArgumentException("Building doesn't belong to any faction!");
-
-        } catch (Exception e) {
-            this.consoleError(e);
-        }
-    }
-
     private void startAutoSaveTask() {
         new BukkitRunnable() {
             @Override
@@ -184,10 +125,161 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         getServer().sendMessage(message);
     }
 
-    @Override
-    public void onDisable() {
-        this.saveAllFactionsAsync(this);
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
+    /*
+                            888888     88b 88     888888     88     888888     Yb  dP
+                            88__       88Yb88       88       88       88        YbdP
+                            88""       88 Y88       88       88       88         8P
+                            888888     88  Y8       88       88       88         dP
+    */
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
+
+    private <T> void saveEntity(T entity) {
+        try (Session session = sessionFactory.openSession()) {
+            session.beginTransaction();
+
+            session.saveOrUpdate(entity);
+            session.getTransaction().commit();
+        } catch (Exception e) {
+            this.consoleError(e);
+        }
     }
+    public <T> CompletableFuture<Void> saveEntityAsync(T entity) {
+
+        return CompletableFuture.runAsync(() -> {
+                try (Session session = sessionFactory.openSession()) {
+                    session.beginTransaction();
+
+                    session.saveOrUpdate(entity);
+                    session.getTransaction().commit();
+                } catch (Exception e) {
+                    this.consoleError(e);
+                }
+
+            });
+    }
+    public <T> CompletableFuture<Void> saveAllEntitiesFromListAsync(List<T> entities) {
+
+        return CompletableFuture.runAsync(() -> {
+            try (Session session = sessionFactory.openSession()) {
+                session.beginTransaction();
+
+                for (T entity : entities) {
+                    session.saveOrUpdate(entity);
+                }
+
+                session.getTransaction().commit();
+            } catch (Exception e) {
+                this.consoleError(e);
+            }
+        });
+    }
+
+    private <T> void deleteEntity(T entity) {
+        try (Session session = sessionFactory.openSession()) {
+            session.beginTransaction();
+
+            session.delete(entity);
+            session.getTransaction().commit();
+        } catch (Exception e) {
+            this.consoleError(e);
+        }
+    }
+    public <T> CompletableFuture<Void> deleteEntityAsync(T entity) {
+
+        return CompletableFuture.runAsync(() -> {
+            try (Session session = sessionFactory.openSession()) {
+                session.beginTransaction();
+
+                session.saveOrUpdate(entity);
+                session.getTransaction().commit();
+            } catch (Exception e) {
+                this.consoleError(e);
+            }
+        });
+    }
+    public <T> CompletableFuture<Void> deleteAllEntitiesFromListAsync(List<T> entities) {
+
+        return CompletableFuture.runAsync(() -> {
+            try (Session session = sessionFactory.openSession()) {
+                session.beginTransaction();
+
+                for (T entity : entities) {
+                    session.delete(entity);
+                }
+
+                session.getTransaction().commit();
+            } catch (Exception e) {
+                this.consoleError(e);
+            }
+        });
+    }
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
+    /*
+                     888888        db         dP""b8     888888     88      dP"Yb      88b 88
+                     88__         dPYb       dP   `"       88       88     dP   Yb     88Yb88
+                     88""        dP__Yb      Yb            88       88     Yb   dP     88 Y88
+                     88         dP""""Yb      YboodP       88       88      YbodP      88  Y8
+    */
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
+
+    private void saveAllFactionsAsync(JavaPlugin plugin) {
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            for (Faction faction : factions) {
+                saveEntity(faction);
+            }
+            plugin.getLogger().info("All factions have been saved.");
+        });
+
+    }
+    public CompletableFuture<Void> saveFactionFromBuilding(Building building) {
+        return CompletableFuture.runAsync(() -> {
+            try (Session session = sessionFactory.openSession()) {
+                session.beginTransaction();
+
+                for (Faction faction : factions) {
+                    if (faction.getBuildings().contains(building)) {
+                        session.saveOrUpdate(faction);
+                        session.getTransaction().commit();
+                    }
+                }
+
+                session.getTransaction().commit();
+                throw new IllegalArgumentException("Building doesn't belong to any faction!");
+
+            } catch (Exception e) {
+                this.consoleError(e);
+            }
+        });
+    }
+    //       //       //       //       //       //       //       //       //       //       //       //       //
+    public Faction getFactionForBuilding(Building building) {
+        for (Faction faction : this.factions) {
+            if (faction.getBuildings().contains(building)) {
+                return faction;
+            }
+        }
+        return null;
+    }
+    public Faction getFactionForPlayer(Player player) {
+        for (Faction faction : this.factions) {
+            if (faction.isFactionPlayer(player)) {
+                return faction;
+            }
+        }
+        return null;
+    }
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
+    /*
+                             88""Yb     888888      dP""b8     88      dP"Yb      88b 88
+                             88__dP     88__       dP   `"     88     dP   Yb     88Yb88
+                             88"Yb      88""       Yb  "88     88     Yb   dP     88 Y88
+                             88  Yb     888888      YboodP     88      YbodP      88  Y8
+    */
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
 
     private void giveRegionWand(Player player) {
         ItemStack wand = new ItemStack(Material.BLAZE_ROD);
@@ -199,7 +291,6 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         player.getInventory().addItem(wand);
         player.sendMessage("You have been given the Region Wand.");
     }
-
     private void addRegionToBuilding(Player player, int buildingId) {
         RegionSelector regionSelector = new RegionSelector();
         Location pointA = regionSelector.getPointA(player.getUniqueId());
@@ -225,30 +316,32 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             return;
         }
 
-        building.addRegion(region);
-
-
-        player.sendMessage("Region added to building " + buildingId);
-
-    }
-
-    public Faction getFactionForBuilding(Building building) {
-        for (Faction faction : this.factions) {
-            if (faction.getBuildings().contains(building)) {
-                return faction;
-            }
+        try {
+            building.addRegion(region);
+            CompletableFuture.allOf(
+                    PluginInstance.getInstance().saveEntityAsync(faction),
+                    PluginInstance.getInstance().saveEntityAsync(building),
+                    PluginInstance.getInstance().saveEntityAsync(region)
+            ).thenRun(() -> {
+                player.sendMessage("New region was added to the building " + buildingId);
+            }).exceptionally(e -> {
+                building.removeRegion(region);
+                throw new IllegalStateException("Query failed! ", e);
+            });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
         }
-        return null;
+
     }
 
-    public Faction getFactionForPlayer(Player player) {
-        for (Faction faction : this.factions) {
-            if (faction.isFactionPlayer(player)) {
-                return faction;
-            }
-        }
-        return null;
-    }
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
+    /*
+                          .dP"Y8     888888        db        888888     88   88     .dP"Y8
+                          `Ybo."       88         dPYb         88       88   88     `Ybo."
+                          o.`Y8b       88        dP__Yb        88       Y8   8P     o.`Y8b
+                          8bodP'       88       dP""""Yb       88       `YbodP'     8bodP'
+    */
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
 
     private Invitation getInvitationForPlayer(Player player) {
         for (Invitation invitation : this.invitations) {
@@ -277,6 +370,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         }
     }
 
+
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
     /*
                    dP""b8      dP"Yb      8b    d8     8b    d8        db        88b 88     8888b.
@@ -298,12 +392,11 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                 case "wand":
                     if (sender instanceof Player) {
                         Player player = (Player) sender;
-                        giveRegionWand(player);
-                        return true;
+                        this.giveRegionWand(player);
                     } else {
                         sender.sendMessage("This command can only be executed by a player.");
-                        return true;
                     }
+                    return true;
 
                 case "building":
                     if (args.length > 3 &&  args[2].equalsIgnoreCase("add") &&
@@ -312,13 +405,12 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                         if (sender instanceof Player) {
                             Player player = (Player) sender;
                             int buildingId = Integer.parseInt(args[1]);
-                            addRegionToBuilding(player, buildingId);
-                            return true;
+                            this.addRegionToBuilding(player, buildingId);
 
                         } else {
                             sender.sendMessage("This command can only be executed by a player.");
-                            return true;
                         }
+                        return true;
                     } else {
                         sender.sendMessage("Invalid arguments for building command");
                         return false;
@@ -334,16 +426,53 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                         case "create":
                             if (sender instanceof Player) {
                                 Player player = (Player) sender;
-                                //int factionId = factions.size();
+
                                 String factionName = args[2];
+                                Faction faction = new Faction(factionName, player);
 
-                                this.factions.add(new Faction(factionName, player));
-
-                                player.sendMessage("Faction " + factionName + " was created with ID " + factions.size());
+                                try {
+                                    this.factions.add(faction);
+                                    CompletableFuture.allOf(
+                                            this.saveEntityAsync(faction)
+                                    ).thenRun(() -> {
+                                        player.sendMessage("Faction " + factionName + " was created with ID " + factions.size());
+                                    }).exceptionally(e -> {
+                                        this.factions.remove(faction);
+                                        player.sendMessage("You were not able to create faction " + factionName);
+                                        throw new IllegalStateException("Query failed! ", e);
+                                    });
+                                } catch (Exception e) {
+                                    this.consoleError(e);
+                                }
 
                             } else {
                                 sender.sendMessage("This command can only be executed by a player.");
                                 return true;
+                            }
+
+                        case "delete":
+                            if (sender instanceof Player) {
+                                Player player = (Player) sender;
+                                Faction faction = this.getFactionForPlayer(player);
+
+                                if (faction != null && faction.getPlayersUUID().indexOf(player.getUniqueId().toString()) == 0) {
+                                    try {
+                                        this.factions.remove(faction);
+                                        CompletableFuture.allOf(
+                                                PluginInstance.getInstance().deleteEntityAsync(faction)
+                                        ).thenRun(() -> {
+                                            player.sendMessage("Faction " + faction.getName() + " was deleted.");
+                                        }).exceptionally(e -> {
+                                            this.factions.add(faction);
+                                            player.sendMessage("You were not able to delete faction " + faction.getName());
+                                            throw new IllegalStateException("Query failed! ", e);
+                                        });
+                                    } catch (Exception e) {
+                                        this.consoleError(e);
+                                    }
+                                } else {
+                                    player.sendMessage("You don't have permission to delete this Faction.");
+                                }
                             }
 
                         case "invite":
@@ -423,6 +552,15 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                             return true;
                         } else {
                             faction.removePlayer(player);
+                            CompletableFuture.allOf(
+                                    PluginInstance.getInstance().saveEntityAsync(faction)
+                            ).thenRun(() -> {
+                                player.sendMessage("You left faction " + faction.getName());
+                            }).exceptionally(e -> {
+                                faction.addPlayer(player);
+                                player.sendMessage("You were not able to leave faction " + faction.getName());
+                                throw new IllegalStateException("Query failed! ", e);
+                            });
                         }
                     } else {
                         sender.sendMessage("This command can only be executed by a player.");
@@ -437,7 +575,20 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                             player.sendMessage("You are not part of any faction.");
                             return true;
                         } else {
-                            actualFaction.removePlayer(player);
+                            try {
+                                actualFaction.removePlayer(player);
+                                CompletableFuture.allOf(
+                                        PluginInstance.getInstance().saveEntityAsync(actualFaction)
+                                ).thenRun(() -> {
+                                    player.sendMessage("You left faction " + actualFaction.getName());
+                                }).exceptionally(e -> {
+                                    actualFaction.addPlayer(player);
+                                    player.sendMessage("You were not able to leave faction " + actualFaction.getName());
+                                    throw new IllegalStateException("Query failed! ", e);
+                                });
+                            } catch (Exception e) {
+                                throw new IllegalStateException("Query failed! ", e);
+                            }
                         }
 
                         Invitation invitation = getInvitationForPlayer(player);
@@ -446,8 +597,21 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                             player.sendMessage("You didn't receive any invitations.");
                             return true;
                         } else {
-                            invitation.getFaction().addPlayer(player);
-                            invitations.remove(invitation);
+                            try {
+                                invitation.getFaction().addPlayer(player);
+                                CompletableFuture.allOf(
+                                        PluginInstance.getInstance().saveEntityAsync(invitation.getFaction())
+                                ).thenRun(() -> {
+                                    player.sendMessage("You joined faction " + invitation.getFaction().getName());
+                                    invitations.remove(invitation);
+                                }).exceptionally(e -> {
+                                    invitation.getFaction().removePlayer(player);
+                                    player.sendMessage("You were not able to join faction " + invitation.getFaction().getName());
+                                    throw new IllegalStateException("Query failed! ", e);
+                                });
+                            } catch (Exception e) {
+                                throw new IllegalStateException("Query failed! ", e);
+                            }
                         }
                     } else {
                         sender.sendMessage("This command can only be executed by a player.");

@@ -11,8 +11,11 @@ import org.bukkit.entity.Player;
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Entity
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "building_type", discriminatorType = DiscriminatorType.STRING)
 @Table(name = "faction_buildings")
 public class Building {
 
@@ -85,10 +88,23 @@ public class Building {
             }
         }
 
-        regions.add(region);
-        PluginInstance.getInstance().saveFactionFromBuilding(this);
-        player.sendMessage("This region was successfully added to this building.");
+        try {
+            regions.add(region);
 
+            CompletableFuture.allOf(
+                    PluginInstance.getInstance().saveFactionFromBuilding(this),
+                    PluginInstance.getInstance().saveEntityAsync(this),
+                    PluginInstance.getInstance().saveEntityAsync(region)
+            ).thenRun(() -> {
+                player.sendMessage("This region was successfully added to this building.");
+            }).exceptionally(e -> {
+                regions.remove(region);
+                player.sendMessage("Query failed! This region was not added to this building.");
+                throw new IllegalStateException("Query failed! ", e);
+            });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
     public void addRegion(Region region) {
         try {
@@ -98,7 +114,14 @@ public class Building {
                 }
             }
             regions.add(region);
-            PluginInstance.getInstance().saveFactionFromBuilding(this);
+            CompletableFuture.allOf(
+                    PluginInstance.getInstance().saveFactionFromBuilding(this),
+                    PluginInstance.getInstance().saveEntityAsync(this),
+                    PluginInstance.getInstance().saveEntityAsync(region)
+            ).exceptionally(e -> {
+                regions.remove(region);
+                throw new IllegalStateException("Query failed! ", e);
+            });
         } catch (Exception e) {
             PluginInstance.getInstance().consoleError(e);
         }
@@ -107,15 +130,41 @@ public class Building {
     public void removeRegion(int Id, Player player) {
         for (Region r : regions) {
             if (r.getId() == Id) {
-                regions.remove(r);
-                PluginInstance.getInstance().saveFactionFromBuilding(this);
+                try {
+                    regions.remove(r);
+                    CompletableFuture.allOf(
+                            PluginInstance.getInstance().saveFactionFromBuilding(this),
+                            PluginInstance.getInstance().saveEntityAsync(this),
+                            PluginInstance.getInstance().deleteEntityAsync(r)
+                    ).thenRun(() -> {
+                        player.sendMessage("This region was successfully removed from this building.");
+                    }).exceptionally(e -> {
+                        regions.add(r);
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
+                } catch (Exception e) {
+                    PluginInstance.getInstance().consoleError(e);
+                }
             }
         }
     }
     public void removeRegion(Region region, Player player) {
         if (regions.contains(region)) {
-            regions.remove(region);
-            PluginInstance.getInstance().saveFactionFromBuilding(this);
+            try {
+                regions.remove(region);
+                CompletableFuture.allOf(
+                        PluginInstance.getInstance().saveFactionFromBuilding(this),
+                        PluginInstance.getInstance().saveEntityAsync(this),
+                        PluginInstance.getInstance().deleteEntityAsync(region)
+                ).thenRun(() -> {
+                    player.sendMessage("This region was successfully removed from this building.");
+                }).exceptionally(e -> {
+                    regions.add(region);
+                    throw new IllegalStateException("Query failed! ", e);
+                });
+            } catch (Exception e) {
+                PluginInstance.getInstance().consoleError(e);
+            }
         } else {
             player.sendMessage("This region does not exist in this building.");
         }
@@ -124,7 +173,14 @@ public class Building {
         try {
             if (regions.contains(region)) {
                 this.regions.remove(region);
-                PluginInstance.getInstance().saveFactionFromBuilding(this);
+                CompletableFuture.allOf(
+                        PluginInstance.getInstance().saveFactionFromBuilding(this),
+                        PluginInstance.getInstance().saveEntityAsync(this),
+                        PluginInstance.getInstance().deleteEntityAsync(region)
+                ).exceptionally(e -> {
+                    regions.add(region);
+                    throw new IllegalStateException("Query failed! ", e);
+                });
             } else {
                 throw new IllegalArgumentException("This region does not exist in this building.");
             }
@@ -173,11 +229,35 @@ public class Building {
     }
 
     public void addRestriction(Restriction restriction) {
-        this.restrictions.add(restriction);
+        try {
+            this.restrictions.add(restriction);
+            CompletableFuture.allOf(
+                    PluginInstance.getInstance().saveFactionFromBuilding(this),
+                    PluginInstance.getInstance().saveEntityAsync(this),
+                    PluginInstance.getInstance().saveEntityAsync(restriction)
+            ).exceptionally(e -> {
+                restrictions.remove(restriction);
+                throw new IllegalStateException("Query failed! ", e);
+            });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public void removeRestriction(Restriction restriction) {
-        this.restrictions.remove(restriction);
+        try {
+            this.restrictions.remove(restriction);
+            CompletableFuture.allOf(
+                    PluginInstance.getInstance().saveFactionFromBuilding(this),
+                    PluginInstance.getInstance().saveEntityAsync(this),
+                    PluginInstance.getInstance().deleteEntityAsync(restriction)
+            ).exceptionally(e -> {
+                restrictions.add(restriction);
+                throw new IllegalStateException("Query failed! ", e);
+            });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public boolean hasRestriction(String name) {

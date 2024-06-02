@@ -22,6 +22,9 @@
         <mapping class="nsk.enhanced.Regions.Restriction" />
         <!-- Klasy Restrykcji -->
 
+        <!-- Statusy Frakcji -->
+        <mapping class="nsk.enhanced.Civilization.status.atWar" />
+
 
         <!-- Dodaj inne klasy encji tutaj -->
 
