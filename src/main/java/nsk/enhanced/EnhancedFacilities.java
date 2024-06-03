@@ -39,6 +39,7 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -461,7 +462,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
     }
 
-    public CompletableFuture<Block> lookForBlock(List<Region> regions, Material material) {
+    public CompletableFuture<Block> lookForBlock(Set<Region> regions, Material material) {
         return CompletableFuture.supplyAsync(() -> {
             for (Region region : regions) {
                 for (Block block : region.getBlocks()) {
