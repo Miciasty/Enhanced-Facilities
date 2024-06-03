@@ -6,13 +6,14 @@ import nsk.enhanced.Buildings.Basic.Sawmill;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Civilization.Faction;
 import nsk.enhanced.Civilization.Invitation;
-import nsk.enhanced.Methods.Managers.SawmillManager;
+import nsk.enhanced.Methods.Managers.Buildings.SawmillManager;
+import nsk.enhanced.Methods.Managers.Events.OnPlayerInteractEvent;
+import nsk.enhanced.Methods.Managers.Regions.RegionWandManager;
 import nsk.enhanced.Methods.MenuInstance;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
 import nsk.enhanced.Regions.Restriction;
 import nsk.enhanced.Regions.Territory;
-import nsk.enhanced.Regions.system.RegionSelector;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -23,11 +24,9 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -54,7 +53,11 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
     private SessionFactory sessionFactory;
 
-    private SawmillManager sawmillManager;
+    private RegionWandManager regionWandManager = new RegionWandManager();
+
+    public RegionWandManager getRegionWandManager() {
+        return regionWandManager;
+    }
 
     @Override
     public void onEnable() {
@@ -62,11 +65,17 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this,this);
         sessionFactory = new Configuration().configure().buildSessionFactory();
 
-        // --- --- --- --- // Managers // --- --- --- --- //
-        sawmillManager = new SawmillManager();
+        // --- --- --- --- // Events Managers & Listeners // --- --- --- --- //
+        // Events Listeners
+        OnPlayerInteractEvent onPlayerInteractEvent = new OnPlayerInteractEvent();
+            getServer().getPluginManager().registerEvents(onPlayerInteractEvent,this);
 
-        // --- --- --- --- // Listeners // --- --- --- --- //
-        getServer().getPluginManager().registerEvents(sawmillManager,this);
+        // --- --- --- --- // Managers // --- --- --- --- //
+            getServer().getPluginManager().registerEvents(regionWandManager,this);
+
+        SawmillManager sawmillManager = new SawmillManager();
+            getServer().getPluginManager().registerEvents(sawmillManager,this);
+
 
 
         Component EF_L1 = MiniMessage.miniMessage().deserialize("<gradient:#9953aa:#172d5d>  _____           _                                         _ ");
@@ -298,6 +307,9 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         });
     }
     //       //       //       //       //       //       //       //       //       //       //       //       //
+    public List<Faction> getAllFactions() {
+        return this.factions;
+    }
     public Faction getFactionByID(int id) {
         for (Faction faction : factions) {
             if (faction.getId() == id) {
@@ -384,47 +396,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
-    public void onPlayerInteract(PlayerInteractEvent event) {
-        Action action = event.getAction();
-        Location location = event.getClickedBlock().getLocation();
 
-        Player player = event.getPlayer();
-
-        switch (action) {
-            case RIGHT_CLICK_BLOCK:
-
-                for (Faction faction : factions) {
-                    if (!faction.isFactionPlayer(player)) {
-                        for (Territory territory : faction.getTerritory()) {
-                            if (territory.contains(location)) {
-                                for (Restriction restriction : faction.getRestrictions()) {
-                                    if (restriction.getRestriction().equals(Restriction.RestrictionType.INTERACT)) {
-                                        player.sendMessage("You are not permitted to interact on that territory.");
-                                        event.setCancelled(true);
-                                    } else {
-
-                                        if (event.getItem() == null || event.getItem().equals(Material.AIR)) { return; }
-                                        ItemStack item = event.getItem();
-                                        ItemMeta im = item.getItemMeta();
-
-                                        if (!im.hasDisplayName()) { return; }
-                                        Component itemName = im.displayName();
-
-                                        if (itemName.equals(Component.text("Region Wand"))) {
-
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-            case LEFT_CLICK_BLOCK:
-
-        }
-    }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
     /*
@@ -446,9 +418,8 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         player.sendMessage("You have been given the Region Wand.");
     }
     private void addRegionToBuilding(Player player, int buildingId) {
-        RegionSelector regionSelector = new RegionSelector();
-        Location pointA = regionSelector.getPointA(player.getUniqueId());
-        Location pointB = regionSelector.getPointB(player.getUniqueId());
+        Location pointA = regionWandManager.getPointA(player.getUniqueId());
+        Location pointB = regionWandManager.getPointB(player.getUniqueId());
 
         if (pointA != null && pointB != null) {
             player.sendMessage("Both points A and B must be set.");
@@ -478,6 +449,8 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                     PluginInstance.getInstance().saveEntityAsync(region)
             ).thenRun(() -> {
                 player.sendMessage("New region was added to the building " + buildingId);
+                regionWandManager.getPointA().remove(player.getUniqueId());
+                regionWandManager.getPointB().remove(player.getUniqueId());
             }).exceptionally(e -> {
                 building.removeRegion(region);
                 throw new IllegalStateException("Query failed! ", e);

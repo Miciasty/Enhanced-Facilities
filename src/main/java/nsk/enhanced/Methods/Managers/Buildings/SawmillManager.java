@@ -1,4 +1,4 @@
-package nsk.enhanced.Methods.Managers;
+package nsk.enhanced.Methods.Managers.Buildings;
 
 import nsk.enhanced.Buildings.Basic.Sawmill;
 import nsk.enhanced.Methods.PluginInstance;
@@ -26,7 +26,7 @@ public class SawmillManager implements Listener {
 
     @EventHandler
     public void onSeverLoad(ServerLoadEvent event) {
-
+        this.scheduledDailyTask();
     }
 
     public void scheduledDailyTask() {

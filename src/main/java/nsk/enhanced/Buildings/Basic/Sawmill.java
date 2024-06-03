@@ -3,16 +3,10 @@ package nsk.enhanced.Buildings.Basic;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Chest;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.server.ServerLoadEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitScheduler;
 
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
@@ -108,5 +102,8 @@ public class Sawmill extends Building {
         chest.getInventory().addItem(woodStack);
         chest.update();
     }
+
+    // --- --- --- --- // Sawmill Logic // --- --- --- --- //
+
 
 }
