@@ -1,0 +1,4 @@
+name: Enhanced Facilities
+version: '1.0'
+main: nsk.enhanced.EnhancedFacilities
+api-version: '1.20'
