@@ -9,6 +9,6 @@ import javax.persistence.Entity;
 @DiscriminatorValue("workshop")
 public class Workshop extends Building {
 
-
+    public Workshop() {}
 
 }

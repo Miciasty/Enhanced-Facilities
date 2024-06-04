@@ -10,6 +10,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
+import javax.persistence.Transient;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
@@ -17,10 +18,13 @@ import java.util.concurrent.CompletableFuture;
 @DiscriminatorValue("sawmill")
 public class Sawmill extends Building {
 
+    @Transient
     private final int radius = 20;
 
+    @Transient
     private final double dropChance = calculateDropChance();
 
+    @Transient
     private final int dailyGenerated = calculateDailyWood();
 
     public Sawmill(int level, int durability, ArrayList<Region> regions) {

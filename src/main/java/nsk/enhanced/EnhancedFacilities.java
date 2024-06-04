@@ -45,8 +45,11 @@ import java.util.concurrent.CompletableFuture;
 
 public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
-    private List<Faction> factions = new ArrayList<>();
-    private List<Building> buildings = new ArrayList<>();
+    private final List<Faction> factions = new ArrayList<>();
+    private final List<Building> buildings = new ArrayList<>();
+    private final List<Region> regions = new ArrayList<>();
+    private final List<Territory> territories = new ArrayList<>();
+    private final List<Restriction> restrictions = new ArrayList<>();
 
     private List<Region> regionSelections = new ArrayList<>();
 
@@ -140,6 +143,78 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
             List<Faction> result = session.createQuery(query).getResultList();
             factions.addAll(result);
+            session.getTransaction().commit();
+
+            this.loadTerritoriesFromDatabase();
+            this.loadBuildingsFromDatabase();
+
+        } catch (Exception e) {
+            this.consoleError(e);
+        }
+    }
+
+    private void loadBuildingsFromDatabase() {
+        try (Session session = sessionFactory.openSession()) {
+            session.beginTransaction();
+
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+            CriteriaQuery<Building> query = builder.createQuery(Building.class);
+            query.from(Building.class);
+
+            List<Building> result = session.createQuery(query).getResultList();
+            buildings.addAll(result);
+            session.getTransaction().commit();
+
+            this.loadRegionsFromDatabase();
+            this.loadRestrictionsFromDatabase();
+
+        } catch (Exception e) {
+            this.consoleError(e);
+        }
+    }
+
+    private void loadTerritoriesFromDatabase() {
+        try (Session session = sessionFactory.openSession()) {
+            session.beginTransaction();
+
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+            CriteriaQuery<Territory> query = builder.createQuery(Territory.class);
+            query.from(Territory.class);
+
+            List<Territory> result = session.createQuery(query).getResultList();
+            territories.addAll(result);
+            session.getTransaction().commit();
+        } catch (Exception e) {
+            this.consoleError(e);
+        }
+    }
+
+    private void loadRegionsFromDatabase() {
+        try (Session session = sessionFactory.openSession()) {
+            session.beginTransaction();
+
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+            CriteriaQuery<Region> query = builder.createQuery(Region.class);
+            query.from(Region.class);
+
+            List<Region> result = session.createQuery(query).getResultList();
+            regions.addAll(result);
+            session.getTransaction().commit();
+        } catch (Exception e) {
+            this.consoleError(e);
+        }
+    }
+
+    private void loadRestrictionsFromDatabase() {
+        try (Session session = sessionFactory.openSession()) {
+            session.beginTransaction();
+
+            CriteriaBuilder builder = session.getCriteriaBuilder();
+            CriteriaQuery<Restriction> query = builder.createQuery(Restriction.class);
+            query.from(Restriction.class);
+
+            List<Restriction> result = session.createQuery(query).getResultList();
+            restrictions.addAll(result);
             session.getTransaction().commit();
         } catch (Exception e) {
             this.consoleError(e);
@@ -462,7 +537,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
     }
 
-    public CompletableFuture<Block> lookForBlock(Set<Region> regions, Material material) {
+    public CompletableFuture<Block> lookForBlock(List<Region> regions, Material material) {
         return CompletableFuture.supplyAsync(() -> {
             for (Region region : regions) {
                 for (Block block : region.getBlocks()) {

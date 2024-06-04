@@ -10,7 +10,7 @@ import org.bukkit.entity.Player;
 
 import javax.persistence.*;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -31,13 +31,13 @@ public class Building {
     @Column(nullable = false)
     protected int durability;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "building_id")
-    protected Set<Region> regions;
+    protected List<Region> regions;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "building_id")
-    private Set<Restriction> restrictions;
+    private List<Restriction> restrictions;
 
     // --- --- --- --- // CONSTRUCTOR // --- --- --- --- //
 
@@ -45,7 +45,7 @@ public class Building {
         setLevel(level);
         setDurability(durability);
 
-        this.regions = new HashSet<>();
+        this.regions = new ArrayList<>();
         this.regions.addAll(regions);
     }
 
@@ -53,7 +53,7 @@ public class Building {
         setLevel(level);
         setDurability(durability);
 
-        this.regions = new HashSet<>();
+        this.regions = new ArrayList<>();
         this.regions.add(region);
     }
 
@@ -185,7 +185,7 @@ public class Building {
         }
     }
 
-    public Set<Region> getRegions() { return regions; }
+    public List<Region> getRegions() { return regions; }
 
     public boolean isInRegion(Location location) {
         for (Region region : regions) {
@@ -220,7 +220,7 @@ public class Building {
 
     // --- --- --- --- // Faction Restrictions // --- --- --- --- //
 
-    public Set<Restriction> getRestrictions() {
+    public List<Restriction> getRestrictions() {
         return restrictions;
     }
 

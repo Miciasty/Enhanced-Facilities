@@ -33,28 +33,28 @@ public class Faction implements Listener {
     @Column(nullable = false)
     private String name;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "faction_players", joinColumns = @JoinColumn(name = "faction_id"))
     @Column(name = "player_uuid")
     private List<String> playersUUID;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "faction_id")
     private List<Building> buildings;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "faction_id")
     protected List<Territory> territories;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "faction_id")
     private List<Restriction> restrictions;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "attacker_id")
     private List<atWar> warsAsAttacker;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumn(name = "defender_id")
     private List<atWar> warsAsDefender;
 
@@ -104,7 +104,7 @@ public class Faction implements Listener {
 
     // --- --- --- --- // Setter's / Getter's // --- --- --- --- //
 
-    private void setName(String name) {
+    /*private void setName(String name) {
         String p = this.name;
         this.name = name;
         CompletableFuture.allOf(
@@ -113,7 +113,12 @@ public class Faction implements Listener {
             this.name = p;
             throw new IllegalStateException("Query failed! ", e);
         });
+    }*/
+
+    public void setName(String name) {
+        this.name = name;
     }
+
     public String getName() {
         return name;
     }
