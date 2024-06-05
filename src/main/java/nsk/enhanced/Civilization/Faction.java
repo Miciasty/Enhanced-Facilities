@@ -104,7 +104,7 @@ public class Faction implements Listener {
 
     // --- --- --- --- // Setter's / Getter's // --- --- --- --- //
 
-    /*private void setName(String name) {
+    private void setName(String name) {
         String p = this.name;
         this.name = name;
         CompletableFuture.allOf(
@@ -113,10 +113,6 @@ public class Faction implements Listener {
             this.name = p;
             throw new IllegalStateException("Query failed! ", e);
         });
-    }*/
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public String getName() {
@@ -539,6 +535,15 @@ public class Faction implements Listener {
                 player.sendMessage("Territory with id " + id + " doesn't exists.");
             }
         }
+    }
+
+    public boolean containLocation(Location location) {
+        for (Territory territory : this.territories) {
+            if (territory.contains(location)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // --- --- --- --- // Faction Restrictions // --- --- --- --- //

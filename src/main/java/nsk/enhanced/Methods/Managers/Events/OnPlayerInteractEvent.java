@@ -63,25 +63,18 @@ public class OnPlayerInteractEvent implements Listener {
 
                 for (Faction faction : factions) {
 
-                    if (!faction.isFactionPlayer(player)) {
+                    if (!faction.isFactionPlayer(player) && faction.containLocation(location)) {
 
-                        for (Territory territory : faction.getTerritory()) {
+                        for (Restriction restriction : faction.getRestrictions()) {
 
-                            if (territory.contains(location)) {
-
-                                for (Restriction restriction : faction.getRestrictions()) {
-
-                                    if (restriction.getRestriction().equals(Restriction.RestrictionType.INTERACT)) {
-                                        player.sendMessage("You are not permitted to interact on that territory.");
-                                        event.setCancelled(true);
-                                    } else /* If player is permitted to interact on Territory */ {
-                                        this.onRegionWand(event);
-                                    }
-                                }
-                            } else /* If location is not in Faction Territory */ {
+                            if (restriction.getRestriction().equals(Restriction.RestrictionType.INTERACT)) {
+                                player.sendMessage("You are not permitted to interact on that territory.");
+                                event.setCancelled(true);
+                            } else /* If player is permitted to interact on Territory */ {
                                 this.onRegionWand(event);
                             }
                         }
+
                     } else /* If player belongs to Faction */ {
                         this.onRegionWand(event);
                     }
@@ -91,25 +84,18 @@ public class OnPlayerInteractEvent implements Listener {
 
                 for (Faction faction : factions) {
 
-                    if (!faction.isFactionPlayer(player)) {
+                    if (!faction.isFactionPlayer(player) && faction.containLocation(location)) {
 
-                        for (Territory territory : faction.getTerritory()) {
+                        for (Restriction restriction : faction.getRestrictions()) {
 
-                            if (territory.contains(location)) {
-
-                                for (Restriction restriction : faction.getRestrictions()) {
-
-                                    if (restriction.getRestriction().equals(Restriction.RestrictionType.INTERACT)) {
-                                        player.sendMessage("You are not permitted to interact on that territory.");
-                                        event.setCancelled(true);
-                                    } else /* If player is permitted to interact on Territory */ {
-                                        this.onRegionWand(event);
-                                    }
-                                }
-                            } else /* If location is not in Faction Territory */ {
+                            if (restriction.getRestriction().equals(Restriction.RestrictionType.INTERACT)) {
+                                player.sendMessage("You are not permitted to interact on that territory.");
+                                event.setCancelled(true);
+                            } else /* If player is permitted to interact on Territory */ {
                                 this.onRegionWand(event);
                             }
                         }
+
                     } else /* If player belongs to Faction */ {
                         this.onRegionWand(event);
                     }

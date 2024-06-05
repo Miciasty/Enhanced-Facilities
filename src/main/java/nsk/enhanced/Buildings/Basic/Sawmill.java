@@ -3,8 +3,10 @@ package nsk.enhanced.Buildings.Basic;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Chest;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -70,7 +72,7 @@ public class Sawmill extends Building {
         final double baseChance = 15.0;
         final double increment = 5.0;
         double chance = baseChance + (getLevel() - 1) * increment;
-        return Math.min(chance, 100.0);
+        return Math.min(chance, 90.0);
     }
 
     private int calculateDailyWood() {
@@ -109,5 +111,27 @@ public class Sawmill extends Building {
 
     // --- --- --- --- // Sawmill Logic // --- --- --- --- //
 
+    public void giveAdditionalWood(Player player, Material block) {
+
+        double dropChance = calculateDropChance();
+        double randomValue = Math.random() * 100;
+
+        if (randomValue <= dropChance) {
+            ItemStack woodStack = new ItemStack(block, 1);
+            player.getInventory().addItem(woodStack);
+        }
+
+    }
+
+    public boolean isWithinRadius(Location location) {
+        Location center = calculateBuildingCenter();
+
+        if (center == null) {
+            return false;
+        }
+
+        double distance = Math.pow(location.getX() - center.getX(), 2) + Math.pow(location.getZ() - center.getZ(), 2);
+        return distance <= Math.pow(this.radius, 2);
+    }
 
 }

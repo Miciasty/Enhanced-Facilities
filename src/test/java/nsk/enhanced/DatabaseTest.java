@@ -1,32 +1,19 @@
 package nsk.enhanced;
 
-import nsk.enhanced.Buildings.Basic.Forge;
 import nsk.enhanced.Buildings.Basic.Sawmill;
-import nsk.enhanced.Buildings.Basic.TownHall;
-import nsk.enhanced.Buildings.Basic.Windmill;
 import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Civilization.Faction;
-import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
 import nsk.enhanced.Regions.Restriction;
 import nsk.enhanced.Regions.Territory;
-import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.hibernate.boot.Metadata;
-import org.hibernate.boot.MetadataSources;
-import org.hibernate.boot.registry.StandardServiceRegistry;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.Configuration;
-import org.hibernate.query.Query;
-import org.hibernate.tool.hbm2ddl.SchemaExport;
-import org.hibernate.tool.schema.TargetType;
 import org.junit.Test;
 
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -66,7 +53,6 @@ public class DatabaseTest {
             System.out.println(f.getName());
         }
 
-
         System.out.println("Buildings: " + buildings.size());
         for (Building b : buildings) {
             System.out.println(b.getType());
@@ -87,23 +73,9 @@ public class DatabaseTest {
             System.out.println(r.getId());
         }
 
-        Faction faction = factions.get(2);
+        Faction faction = factions.get(5);
 
-        String p = faction.getName();
-        faction.setName("GUILD");
-
-        try {
-
-
-            CompletableFuture.allOf(
-                    this.saveEntityAsync(faction)
-            ).exceptionally(e -> {
-                faction.setName(p);
-                throw new IllegalStateException("Query failed! ", e);
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        System.out.println(faction.getName());
 
 
         //session.getTransaction().commit();
@@ -119,7 +91,7 @@ public class DatabaseTest {
 
         return CompletableFuture.runAsync(() -> {
 
-            System.out.println("Saving " + entity.getClass().getSimpleName());
+            System.out.println("Trying to save " + entity.getClass().getSimpleName());
 
             try (Session session = sessionFactory.openSession()) {
                 session.beginTransaction();
@@ -135,6 +107,24 @@ public class DatabaseTest {
         });
     }
 
+    public <T> CompletableFuture<Void> deleteEntityAsync(T entity) {
+
+        return CompletableFuture.runAsync(() -> {
+
+            System.out.println("Trying to delete " + entity.getClass().getSimpleName());
+
+            try (Session session = sessionFactory.openSession()) {
+                session.beginTransaction();
+
+                System.out.println("Deleting " + entity.getClass().getSimpleName());
+
+                session.delete(entity);
+                session.getTransaction().commit();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
 
     public void loadFactionsFromDatabase() {
         try (Session session = sessionFactory.openSession()) {

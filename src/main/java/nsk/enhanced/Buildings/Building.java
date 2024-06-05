@@ -196,6 +196,33 @@ public class Building {
         return false;
     }
 
+    public Location calculateBuildingCenter() {
+        double totalX = 0;
+        double totalZ = 0;
+        int count = 0;
+
+        for (Region region : getRegions()) {
+            Location pointA = region.getPointA();
+            Location pointB = region.getPointB();
+
+            double centerX = (pointA.getX() + pointB.getX()) / 2;
+            double centerZ = (pointA.getZ() + pointB.getZ()) / 2;
+
+            totalX += centerX;
+            totalZ += centerZ;
+            count++;
+        }
+
+        if (count == 0) {
+            return null;
+        }
+
+        double averageX = totalX / count;
+        double averageZ = totalZ / count;
+
+        return new Location(getRegions().get(0).getWorld(), averageX, 0, averageZ);
+    }
+
     // --- --- --- --- // Faction // --- --- --- --- //
 
     public Faction getFaction() {

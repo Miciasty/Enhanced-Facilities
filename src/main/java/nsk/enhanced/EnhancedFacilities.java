@@ -7,6 +7,7 @@ import nsk.enhanced.Buildings.Building;
 import nsk.enhanced.Civilization.Faction;
 import nsk.enhanced.Civilization.Invitation;
 import nsk.enhanced.Methods.Managers.Buildings.SawmillManager;
+import nsk.enhanced.Methods.Managers.Events.OnBlockInteractEvent;
 import nsk.enhanced.Methods.Managers.Events.OnPlayerInteractEvent;
 import nsk.enhanced.Methods.Managers.Regions.RegionWandManager;
 import nsk.enhanced.Methods.MenuInstance;
@@ -72,7 +73,9 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         // --- --- --- --- // Events Managers & Listeners // --- --- --- --- //
         // Events Listeners
         OnPlayerInteractEvent onPlayerInteractEvent = new OnPlayerInteractEvent();
+        OnBlockInteractEvent onBlockInteractEvent = new OnBlockInteractEvent();
             getServer().getPluginManager().registerEvents(onPlayerInteractEvent,this);
+            getServer().getPluginManager().registerEvents(onBlockInteractEvent,this);
 
         // --- --- --- --- // Managers // --- --- --- --- //
             getServer().getPluginManager().registerEvents(regionWandManager,this);
@@ -319,7 +322,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             try (Session session = sessionFactory.openSession()) {
                 session.beginTransaction();
 
-                session.saveOrUpdate(entity);
+                session.delete(entity);
                 session.getTransaction().commit();
             } catch (Exception e) {
                 this.consoleError(e);
@@ -411,47 +414,16 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         return null;
     }
 
-    @EventHandler
-    public void onBlockBreak(BlockBreakEvent event) {
-        Player player = event.getPlayer();
-        Block block = event.getBlock();
-        Location location = block.getLocation();
-
-        for (Faction faction : factions) {
-            if (!faction.isFactionPlayer(player)) {
-                for (Territory territory : faction.getTerritory()) {
-                    if (territory.contains(location)) {
-                        for (Restriction restriction : faction.getRestrictions()) {
-                            if (restriction.getRestriction().equals(Restriction.RestrictionType.BLOCK_BREAK)) {
-                                event.setCancelled(true);
-                            }
-                        }
-                    }
-                }
+    public Faction getFactionByLocation(Location location) {
+        for (Faction faction : this.factions) {
+            if (faction.containLocation(location)) {
+                return faction;
             }
         }
+        return null;
     }
 
-    @EventHandler
-    public void onBlockPlace(BlockPlaceEvent event) {
-        Player player = event.getPlayer();
-        Block block = event.getBlock();
-        Location location = block.getLocation();
 
-        for (Faction faction : factions) {
-            if (!faction.isFactionPlayer(player)) {
-                for (Territory territory : faction.getTerritory()) {
-                    if (territory.contains(location)) {
-                        for (Restriction restriction : faction.getRestrictions()) {
-                            if (restriction.getRestriction().equals(Restriction.RestrictionType.BLOCK_BREAK)) {
-                                event.setCancelled(true);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     @EventHandler
     public void  onEntityDamagebyEntity(EntityDamageByEntityEvent event) {
