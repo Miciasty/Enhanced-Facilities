@@ -1,6 +1,7 @@
 package nsk.enhanced.Methods.Managers.Buildings;
 
 import nsk.enhanced.Buildings.Basic.Sawmill;
+import nsk.enhanced.Civilization.Faction;
 import nsk.enhanced.Methods.PluginInstance;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -33,6 +34,8 @@ public class SawmillManager implements Listener {
     @EventHandler
     public void onSeverLoad(ServerLoadEvent event) {
         this.scheduledDailyTask();
+
+        List<Faction> factions = PluginInstance.getInstance().getAllFactions();
     }
 
     public void scheduledDailyTask() {

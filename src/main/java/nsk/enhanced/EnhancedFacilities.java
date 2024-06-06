@@ -8,13 +8,12 @@ import nsk.enhanced.Civilization.Faction;
 import nsk.enhanced.Civilization.Invitation;
 import nsk.enhanced.Methods.Managers.Buildings.SawmillManager;
 import nsk.enhanced.Methods.Managers.Events.OnBlockInteractEvent;
+import nsk.enhanced.Methods.Managers.Events.OnEntityDamageByEntity;
 import nsk.enhanced.Methods.Managers.Events.OnPlayerInteractEvent;
 import nsk.enhanced.Methods.Managers.Regions.RegionWandManager;
 import nsk.enhanced.Methods.MenuInstance;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
-import nsk.enhanced.Regions.Restriction;
-import nsk.enhanced.Regions.Territory;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -23,15 +22,12 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -40,25 +36,19 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
     private final List<Faction> factions = new ArrayList<>();
-    private final List<Building> buildings = new ArrayList<>();
-    private final List<Region> regions = new ArrayList<>();
-    private final List<Territory> territories = new ArrayList<>();
-    private final List<Restriction> restrictions = new ArrayList<>();
 
-    private List<Region> regionSelections = new ArrayList<>();
-
-    private List<Invitation> invitations = new ArrayList<>();
+    private final List<Invitation> invitations = new ArrayList<>();
 
     private SessionFactory sessionFactory;
 
-    private RegionWandManager regionWandManager = new RegionWandManager();
+    private final RegionWandManager regionWandManager = new RegionWandManager();
 
     public RegionWandManager getRegionWandManager() {
         return regionWandManager;
@@ -72,10 +62,12 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
         // --- --- --- --- // Events Managers & Listeners // --- --- --- --- //
         // Events Listeners
+        OnEntityDamageByEntity onEntityDamageByEntity = new OnEntityDamageByEntity();
         OnPlayerInteractEvent onPlayerInteractEvent = new OnPlayerInteractEvent();
         OnBlockInteractEvent onBlockInteractEvent = new OnBlockInteractEvent();
-            getServer().getPluginManager().registerEvents(onPlayerInteractEvent,this);
-            getServer().getPluginManager().registerEvents(onBlockInteractEvent,this);
+                getServer().getPluginManager().registerEvents(onEntityDamageByEntity,this);
+                getServer().getPluginManager().registerEvents(onPlayerInteractEvent,this);
+                getServer().getPluginManager().registerEvents(onBlockInteractEvent,this);
 
         // --- --- --- --- // Managers // --- --- --- --- //
             getServer().getPluginManager().registerEvents(regionWandManager,this);
@@ -133,7 +125,14 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        this.saveAllFactionsAsync(this);
+        try {
+            this.saveAllEntitiesFromListAsync(factions)
+                .exceptionally(e -> {
+                    throw new RuntimeException("Failed to save factions into the database", e);
+            }).get();
+        } catch (Exception e) {
+            this.consoleError(e);
+        }
     }
 
     private void loadFactionsFromDatabase() {
@@ -145,16 +144,34 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             query.from(Faction.class);
 
             List<Faction> result = session.createQuery(query).getResultList();
-            factions.addAll(result);
+            for (Faction f : result) {
+                factions.add(f);
+
+                Hibernate.initialize(f.getPlayers());
+                Hibernate.initialize(f.getBuildings());
+                Hibernate.initialize(f.getTerritory());
+                Hibernate.initialize(f.getRestrictions());
+
+                List<Building> buildings = f.getBuildings();
+
+                for (Building b : buildings) {
+                    Hibernate.initialize(b.getRegions());
+                    Hibernate.initialize(b.getRestrictions());
+                }
+
+            }
+
             session.getTransaction().commit();
 
-            this.loadTerritoriesFromDatabase();
-            this.loadBuildingsFromDatabase();
+            // this.loadTerritoriesFromDatabase();
+            // this.loadBuildingsFromDatabase();
 
         } catch (Exception e) {
             this.consoleError(e);
         }
     }
+
+    /*
 
     private void loadBuildingsFromDatabase() {
         try (Session session = sessionFactory.openSession()) {
@@ -165,7 +182,12 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             query.from(Building.class);
 
             List<Building> result = session.createQuery(query).getResultList();
-            buildings.addAll(result);
+            for (Building b : result) {
+                buildings.add(b);
+
+                Hibernate.initialize(b.getRegions());
+                Hibernate.initialize(b.getRestrictions());
+            }
             session.getTransaction().commit();
 
             this.loadRegionsFromDatabase();
@@ -223,6 +245,8 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             this.consoleError(e);
         }
     }
+
+     */
 
     private void startAutoSaveTask() {
         new BukkitRunnable() {
@@ -422,29 +446,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         }
         return null;
     }
-
-
-
-    @EventHandler
-    public void  onEntityDamagebyEntity(EntityDamageByEntityEvent event) {
-        if (event.getDamager() instanceof Player) {
-            Player attacker = (Player) event.getDamager();
-
-            if (event.getEntity() instanceof Player) {
-                Player victim = (Player) event.getEntity();
-
-                if (this.getFactionForPlayer(attacker).equals(this.getFactionForPlayer(victim))) {
-                    for (Restriction restriction : this.getFactionForPlayer(attacker).getRestrictions()) {
-                        if (restriction.getRestriction().equals(Restriction.RestrictionType.FRIENDLY_FIRE)) {
-                            event.setCancelled(true);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
+    //       //       //       //       //       //       //       //       //       //       //       //       //
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- //
     /*

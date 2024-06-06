@@ -6,6 +6,7 @@ import nsk.enhanced.Civilization.Faction;
 import nsk.enhanced.Regions.Region;
 import nsk.enhanced.Regions.Restriction;
 import nsk.enhanced.Regions.Territory;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -53,6 +54,7 @@ public class DatabaseTest {
             System.out.println(f.getName());
         }
 
+        /*
         System.out.println("Buildings: " + buildings.size());
         for (Building b : buildings) {
             System.out.println(b.getType());
@@ -72,10 +74,25 @@ public class DatabaseTest {
         for (Restriction r : restrictions) {
             System.out.println(r.getId());
         }
+        */
 
-        Faction faction = factions.get(5);
 
-        System.out.println(faction.getName());
+        Faction faction = factions.get(1);
+        List<Building> buildingst = faction.getBuildings();
+
+        Building building = buildingst.get(1);
+       try {
+           buildingst.remove(building);
+           this.saveEntityAsync(faction)
+                   .thenRun(() -> {
+                       System.out.println("Building was successfully removed");
+                   }).exceptionally(e -> {
+                   buildingst.add(building);
+                   throw new IllegalStateException("Query failed", e);
+               }).get();
+       } catch (Exception e) {
+           e.printStackTrace();
+       }
 
 
         //session.getTransaction().commit();
@@ -135,11 +152,26 @@ public class DatabaseTest {
             query.from(Faction.class);
 
             List<Faction> result = session.createQuery(query).getResultList();
-            factions.addAll(result);
+            for (Faction f : result) {
+                factions.add(f);
+
+                Hibernate.initialize(f.getPlayers());
+                Hibernate.initialize(f.getBuildings());
+                Hibernate.initialize(f.getTerritory());
+                Hibernate.initialize(f.getRestrictions());
+
+                List<Building> buildings = f.getBuildings();
+
+                for (Building b : buildings) {
+                    Hibernate.initialize(b.getRegions());
+                    Hibernate.initialize(b.getRestrictions());
+                }
+
+            }
             session.getTransaction().commit();
 
-            this.loadTerritoriesFromDatabase();
-            this.loadBuildingsFromDatabase();
+            // this.loadTerritoriesFromDatabase();
+            // this.loadBuildingsFromDatabase();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -155,7 +187,12 @@ public class DatabaseTest {
             query.from(Building.class);
 
             List<Building> result = session.createQuery(query).getResultList();
-            buildings.addAll(result);
+            for (Building b : result) {
+                buildings.add(b);
+
+                Hibernate.initialize(b.getRegions());
+                Hibernate.initialize(b.getRestrictions());
+            }
             session.getTransaction().commit();
 
             this.loadRegionsFromDatabase();

@@ -107,12 +107,15 @@ public class Faction implements Listener {
     private void setName(String name) {
         String p = this.name;
         this.name = name;
-        CompletableFuture.allOf(
-                PluginInstance.getInstance().saveEntityAsync(this)
-        ).exceptionally(e -> {
-            this.name = p;
-            throw new IllegalStateException("Query failed! ", e);
-        });
+        try {
+            PluginInstance.getInstance().saveEntityAsync(this)
+                .exceptionally(e -> {
+                    this.name = p;
+                    throw new IllegalStateException("Query failed! ", e);
+                });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public String getName() {
@@ -128,26 +131,26 @@ public class Faction implements Listener {
     public List<Building> getBuildings() { return this.buildings; }
 
     public void addBuildings(ArrayList<Building> buildings) {
-        this.buildings.addAll(buildings);
-        CompletableFuture.allOf(
-                PluginInstance.getInstance().saveEntityAsync(this),
-                PluginInstance.getInstance().saveAllEntitiesFromListAsync(buildings)
-        ).exceptionally(e -> {
-            this.buildings.removeAll(buildings);
-            throw new IllegalStateException("Query failed! ", e);
-        });
+        try {
+            this.buildings.addAll(buildings);
+            PluginInstance.getInstance().saveEntityAsync(this)
+                .exceptionally(e -> {
+                    this.buildings.removeAll(buildings);
+                    throw new IllegalStateException("Query failed! ", e);
+                });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public void addBuilding(Building building) {
         try {
             this.buildings.add(building);
-            CompletableFuture.allOf(
-                    PluginInstance.getInstance().saveEntityAsync(this),
-                    PluginInstance.getInstance().saveEntityAsync(building)
-            ).exceptionally(e -> {
-                this.buildings.remove(building);
-                throw new IllegalStateException("Query failed! ", e);
-            });
+            PluginInstance.getInstance().saveEntityAsync(this)
+                .exceptionally(e -> {
+                    this.buildings.remove(building);
+                    throw new IllegalStateException("Query failed! ", e);
+                });
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -156,45 +159,47 @@ public class Faction implements Listener {
     public void addBuilding(int level, int durability, List<Region> regions, Player player) {
         Building newBuilding = new Building(level, durability, regions);
 
-        this.buildings.add( newBuilding );
-        CompletableFuture.allOf(
-                PluginInstance.getInstance().saveEntityAsync(this),
-                PluginInstance.getInstance().saveEntityAsync(newBuilding)
-        ).thenRun(() -> {
-            player.sendMessage("Building was successfully added to the faction");
-        }).exceptionally(e -> {
-            this.buildings.remove(newBuilding);
-            throw new IllegalStateException("Query failed! ", e);
-        });
+        try {
+            this.buildings.add( newBuilding );
+            PluginInstance.getInstance().saveEntityAsync(this)
+                .thenRun(() -> {
+                    player.sendMessage("Building was successfully added to the faction");
+                }).exceptionally(e -> {
+                    this.buildings.remove(newBuilding);
+                    throw new IllegalStateException("Query failed! ", e);
+                });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public void addBuilding(int level, int durability, List<Region> regions) {
         Building newBuilding = new Building(level, durability, regions);
 
-        this.buildings.add( newBuilding );
+        try {
+            this.buildings.add( newBuilding );
 
-        CompletableFuture.allOf(
-                PluginInstance.getInstance().saveEntityAsync(this),
-                PluginInstance.getInstance().saveEntityAsync(newBuilding)
-        ).exceptionally(e -> {
-            this.buildings.remove(newBuilding);
-            throw new IllegalStateException("Query failed! ", e);
-        });
+            PluginInstance.getInstance().saveEntityAsync(this)
+                .exceptionally(e -> {
+                    this.buildings.remove(newBuilding);
+                    throw new IllegalStateException("Query failed! ", e);
+                });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public void removeBuilding(Building building, Player player) {
         try {
             if (this.buildings.contains(building)) {
                 this.buildings.remove(building);
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this),
-                        PluginInstance.getInstance().deleteEntityAsync(building)
-                ).thenRun(() -> {
-                    player.sendMessage("Building was successfully removed");
-                }).exceptionally(e -> {
-                    this.buildings.add(building);
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .thenRun(() -> {
+                        player.sendMessage("Building was successfully removed");
+                    }).exceptionally(e -> {
+                        this.buildings.add(building);
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 player.sendMessage("Your faction doesn't possess this building");
             }
@@ -206,13 +211,11 @@ public class Faction implements Listener {
         try {
             if (this.buildings.contains(building)) {
                 this.buildings.remove(building);
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this),
-                        PluginInstance.getInstance().deleteEntityAsync(building)
-                ).exceptionally(e -> {
-                    this.buildings.add(building);
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .exceptionally(e -> {
+                        this.buildings.add(building);
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 throw new IllegalArgumentException("This building does not exist");
             }
@@ -284,12 +287,11 @@ public class Faction implements Listener {
 
             if (target.equals(uuid) && this.playersUUID.contains(uuid.toString())) {
                 playersUUID.add(uuid.toString());
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this)
-                ).exceptionally(e -> {
-                    this.playersUUID.remove(uuid.toString());
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .exceptionally(e -> {
+                        this.playersUUID.remove(uuid.toString());
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 throw new IllegalArgumentException("Player with uuid " + uuid + " does not exist");
             }
@@ -304,12 +306,11 @@ public class Faction implements Listener {
 
             if(target.equals(name) && this.playersUUID.contains(target.getUniqueId().toString())) {
                 playersUUID.add(target.getUniqueId().toString());
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this)
-                ).exceptionally(e -> {
-                    this.playersUUID.remove(target.getUniqueId().toString());
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .exceptionally(e -> {
+                        this.playersUUID.remove(target.getUniqueId().toString());
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 throw new IllegalArgumentException("Player with that name doesn't exists.");
             }
@@ -326,20 +327,15 @@ public class Faction implements Listener {
                 this.playersUUID.add( player.getUniqueId().toString() );
                 state++;
 
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this)
-                ).exceptionally(e -> {
-                    this.playersUUID.remove(player.getUniqueId().toString());
-                    throw new IllegalStateException("Query failed! ", e);
-                });
-
-
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .exceptionally(e -> {
+                        this.playersUUID.remove(player.getUniqueId().toString());
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             }
 
             if (state == 0) {
                 throw new IllegalArgumentException("No players were added to the faction");
-            } else {
-                PluginInstance.getInstance().saveEntityAsync(this);
             }
         } catch (Exception e) {
             PluginInstance.getInstance().consoleError(e);
@@ -348,13 +344,16 @@ public class Faction implements Listener {
     }
 
     public void addPlayer(Player player) {
-        this.playersUUID.add(player.getUniqueId().toString());
-        CompletableFuture.allOf(
-                PluginInstance.getInstance().saveEntityAsync(this)
-        ).exceptionally(e -> {
-            this.playersUUID.remove(player.getUniqueId().toString());
-            throw new IllegalStateException("Query failed! ", e);
-        });
+        try {
+            this.playersUUID.add(player.getUniqueId().toString());
+            PluginInstance.getInstance().saveEntityAsync(this)
+                .exceptionally(e -> {
+                    this.playersUUID.remove(player.getUniqueId().toString());
+                    throw new IllegalStateException("Query failed! ", e);
+                });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public void removePlayer(String name, Player p) {
@@ -363,12 +362,11 @@ public class Faction implements Listener {
 
             if (playersUUID.contains(target.getUniqueId().toString())) {
                 playersUUID.remove(target.getUniqueId().toString());
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this)
-                ).exceptionally(e -> {
-                    playersUUID.add(target.getUniqueId().toString());
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .exceptionally(e -> {
+                        playersUUID.add(target.getUniqueId().toString());
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 throw new IllegalArgumentException("Player with name " + name + " doesn't belong to the faction");
             }
@@ -383,12 +381,11 @@ public class Faction implements Listener {
 
             if(target.getUniqueId().equals(p.getUniqueId())) {
                 playersUUID.remove(uuid.toString());
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this)
-                ).exceptionally(e -> {
-                    playersUUID.add(uuid.toString());
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .exceptionally(e -> {
+                        playersUUID.add(uuid.toString());
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 throw new IllegalArgumentException("Player with that uuid doesn't belong to the faction.");
             }
@@ -402,12 +399,11 @@ public class Faction implements Listener {
             try {
                 if (playersUUID.contains(player.getUniqueId().toString())) {
                     playersUUID.remove(player.getUniqueId().toString());
-                    CompletableFuture.allOf(
-                            PluginInstance.getInstance().saveEntityAsync(this)
-                    ).exceptionally(e -> {
-                        playersUUID.add(player.getUniqueId().toString());
-                        throw new IllegalStateException("Query failed! ", e);
-                    });
+                    PluginInstance.getInstance().saveEntityAsync(this)
+                        .exceptionally(e -> {
+                            playersUUID.add(player.getUniqueId().toString());
+                            throw new IllegalStateException("Query failed! ", e);
+                        });
                 } else {
                     throw new IllegalArgumentException("Player with uuid " + player.getUniqueId() + " doesn't belong to the faction");
                 }
@@ -421,12 +417,11 @@ public class Faction implements Listener {
         try {
             if (playersUUID.contains(player.getUniqueId().toString())) {
                 playersUUID.remove(player.getUniqueId().toString());
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this)
-                ).exceptionally(e -> {
-                    playersUUID.add(player.getUniqueId().toString());
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .exceptionally(e -> {
+                        playersUUID.add(player.getUniqueId().toString());
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 throw new IllegalArgumentException("Player with that uuid " + player.getUniqueId() + " doesn't belong to the faction");
             }
@@ -478,17 +473,19 @@ public class Faction implements Listener {
             }
         }
 
-        this.territories.add(newTerritory);
-        CompletableFuture.allOf(
-                PluginInstance.getInstance().saveEntityAsync(this),
-                PluginInstance.getInstance().saveEntityAsync(newTerritory)
-        ).thenRun(() -> {
-            player.sendMessage("Chunk claimed successfully.");
-        }).exceptionally(e -> {
-            this.territories.remove(newTerritory);
-            player.sendMessage("Query failed! Chunk could not be claimed.");
-            throw new IllegalStateException("Query failed! ", e);
-        });
+        try {
+            this.territories.add(newTerritory);
+            PluginInstance.getInstance().saveEntityAsync(this)
+                .thenRun(() -> {
+                    player.sendMessage("Chunk claimed successfully.");
+                }).exceptionally(e -> {
+                    this.territories.remove(newTerritory);
+                    player.sendMessage("Query failed! Chunk could not be claimed.");
+                    throw new IllegalStateException("Query failed! ", e);
+                });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
 
     }
 
@@ -499,17 +496,19 @@ public class Faction implements Listener {
 
         for (Territory territory : this.territories) {
             if (territory.getPointA().equals(pointA) && territory.getPointB().equals(pointB)) {
-                this.territories.remove(territory);
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this),
-                        PluginInstance.getInstance().deleteEntityAsync(territory)
-                ).thenRun(() -> {
-                    player.sendMessage("Chunk removed from territory successfully.");
-                }).exceptionally(e -> {
-                    this.territories.add(territory);
-                    player.sendMessage("Query failed! Chunk could not be removed.");
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                try {
+                    this.territories.remove(territory);
+                    PluginInstance.getInstance().saveEntityAsync(this)
+                        .thenRun(() -> {
+                            player.sendMessage("Chunk removed from territory successfully.");
+                        }).exceptionally(e -> {
+                            this.territories.add(territory);
+                            player.sendMessage("Query failed! Chunk could not be removed.");
+                            throw new IllegalStateException("Query failed! ", e);
+                        });
+                } catch (Exception e) {
+                    PluginInstance.getInstance().consoleError(e);
+                }
             } else {
                 player.sendMessage("This chunk doesn't belong to this faction.");
             }
@@ -519,17 +518,19 @@ public class Faction implements Listener {
     public void removeTerritoryById(int id, Player player) {
         for (Territory territory : this.territories) {
             if (territory.getId() == id) {
-                this.territories.remove(territory);
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this),
-                        PluginInstance.getInstance().deleteEntityAsync(territory)
-                ).thenRun(() -> {
-                    player.sendMessage("Territory with id " + id + " removed successfully.");
-                }).exceptionally(e -> {
-                    this.territories.add(territory);
-                    player.sendMessage("Query failed! Territory with id " + id + " could not be removed.");
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                try {
+                    this.territories.remove(territory);
+                    PluginInstance.getInstance().saveEntityAsync(this)
+                            .thenRun(() -> {
+                                player.sendMessage("Territory with id " + id + " removed successfully.");
+                            }).exceptionally(e -> {
+                                this.territories.add(territory);
+                                player.sendMessage("Query failed! Territory with id " + id + " could not be removed.");
+                                throw new IllegalStateException("Query failed! ", e);
+                            });
+                } catch (Exception e) {
+                    PluginInstance.getInstance().consoleError(e);
+                }
 
             } else {
                 player.sendMessage("Territory with id " + id + " doesn't exists.");
@@ -557,13 +558,11 @@ public class Faction implements Listener {
         try {
             if (!this.restrictions.contains(restriction)) {
                 this.restrictions.add(restriction);
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this),
-                        PluginInstance.getInstance().saveEntityAsync(restriction)
-                ).exceptionally(e -> {
-                    this.restrictions.remove(restriction);
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .exceptionally(e -> {
+                        this.restrictions.remove(restriction);
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 throw new IllegalArgumentException("This restriction already exists.");
             }
@@ -576,13 +575,11 @@ public class Faction implements Listener {
         try {
             if (this.restrictions.contains(restriction)) {
                 this.restrictions.remove(restriction);
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this),
-                        PluginInstance.getInstance().deleteEntityAsync(restriction)
-                ).exceptionally(e -> {
-                    this.restrictions.add(restriction);
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveEntityAsync(this)
+                    .exceptionally(e -> {
+                        this.restrictions.add(restriction);
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 throw new IllegalArgumentException("Restriction with Id " + restriction.getId() + " doesn't exist.");
             }
@@ -619,39 +616,45 @@ public class Faction implements Listener {
 
         atWar war = new atWar(this, enemy);
 
-        this.warsAsAttacker.add(war);
-        enemy.warsAsDefender.add(war);
+        try {
+            this.warsAsAttacker.add(war);
+            enemy.warsAsDefender.add(war);
 
-        CompletableFuture.allOf(
-                PluginInstance.getInstance().saveEntityAsync(this),
-                PluginInstance.getInstance().saveEntityAsync(enemy),
-                PluginInstance.getInstance().saveEntityAsync(war)
-        ).thenRun(() -> {
-            this.forEachPlayer(enemy);
-            enemy.forEachPlayer(this);
-        }).exceptionally(e -> {
-            this.warsAsAttacker.remove(war);
-            enemy.warsAsDefender.remove(war);
-            throw new IllegalStateException("Query failed! ", e);
-        });
+            CompletableFuture.allOf(
+                    PluginInstance.getInstance().saveEntityAsync(this),
+                    PluginInstance.getInstance().saveEntityAsync(enemy)
+            ).thenRun(() -> {
+                this.forEachPlayer(enemy);
+                enemy.forEachPlayer(this);
+            }).exceptionally(e -> {
+                this.warsAsAttacker.remove(war);
+                enemy.warsAsDefender.remove(war);
+                throw new IllegalStateException("Query failed! ", e);
+            });
+        } catch (Exception e) {
+            PluginInstance.getInstance().consoleError(e);
+        }
     }
 
     public void declarePeace(Faction enemy, Player player) {
 
         for (atWar war : getWarsAsAttacker()) {
             if (war.getDefender().equals(enemy)) {
-                this.warsAsAttacker.remove(war);
-                enemy.warsAsDefender.remove(war);
+                try {
+                    this.warsAsAttacker.remove(war);
+                    enemy.warsAsDefender.remove(war);
 
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveEntityAsync(this),
-                        PluginInstance.getInstance().saveEntityAsync(enemy),
-                        PluginInstance.getInstance().deleteEntityAsync(war)
-                ).exceptionally(e -> {
-                    this.warsAsAttacker.add(war);
-                    enemy.warsAsDefender.add(war);
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                    CompletableFuture.allOf(
+                            PluginInstance.getInstance().saveEntityAsync(this),
+                            PluginInstance.getInstance().saveEntityAsync(enemy)
+                    ).exceptionally(e -> {
+                        this.warsAsAttacker.add(war);
+                        enemy.warsAsDefender.add(war);
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
+                } catch (Exception e) {
+                    PluginInstance.getInstance().consoleError(e);
+                }
             }
         }
     }
