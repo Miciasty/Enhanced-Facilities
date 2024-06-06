@@ -14,6 +14,7 @@ import nsk.enhanced.Methods.Managers.Regions.RegionWandManager;
 import nsk.enhanced.Methods.MenuInstance;
 import nsk.enhanced.Methods.PluginInstance;
 import nsk.enhanced.Regions.Region;
+import nsk.enhanced.Regions.Restriction;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -125,13 +126,20 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
     @Override
     public void onDisable() {
-        try {
-            this.saveAllEntitiesFromListAsync(factions)
-                .exceptionally(e -> {
-                    throw new RuntimeException("Failed to save factions into the database", e);
-            }).get();
-        } catch (Exception e) {
-            this.consoleError(e);
+        int attempts = 0;
+        boolean status = false;
+        while (attempts < 30 && !status) {
+            try {
+                this.saveAllEntitiesFromListAsync(factions)
+                        .exceptionally(e -> {
+                            throw new RuntimeException("Failed to save factions into the database", e);
+                        }).get();
+            } catch (Exception e) {
+                this.consoleError(new RuntimeException("\nAttempt #" + attempts++ + " failed. Repeating attempt\n", e));
+                if (attempts >= 30) {
+                    this.consoleError(new RuntimeException("Failed to many times...\n Server is shutting down :(", e));
+                }
+            }
         }
     }
 
@@ -252,7 +260,15 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() {
-                saveAllFactionsAsync(EnhancedFacilities.this);
+                //saveAllFactionsAsync(EnhancedFacilities.this);
+                try {
+                    saveAllEntitiesFromListAsync(factions)
+                        .exceptionally(e -> {
+                            throw new RuntimeException("Failed to save factions into the database", e);
+                        }).get();
+                } catch (Exception e) {
+                    consoleError(e);
+                }
             }
         }.runTaskTimerAsynchronously(this,0L, 20L * 60 * 15);
     }
@@ -493,7 +509,12 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
 
         try {
             building.addRegion(region);
-            CompletableFuture.allOf(
+
+            regionWandManager.getPointA().remove(player.getUniqueId());
+            regionWandManager.getPointB().remove(player.getUniqueId());
+
+            player.sendMessage("New region was added to the building " + buildingId);
+            /*CompletableFuture.allOf(
                     PluginInstance.getInstance().saveEntityAsync(faction),
                     PluginInstance.getInstance().saveEntityAsync(building),
                     PluginInstance.getInstance().saveEntityAsync(region)
@@ -504,7 +525,7 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
             }).exceptionally(e -> {
                 building.removeRegion(region);
                 throw new IllegalStateException("Query failed! ", e);
-            });
+            });*/
         } catch (Exception e) {
             PluginInstance.getInstance().consoleError(e);
         }
@@ -589,6 +610,74 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                     return true;
 
                 case "building":
+
+                    if (sender instanceof Player && args.length > 2) {
+                        Player player = (Player) sender;
+                        Faction faction = getFactionForPlayer(player);
+
+                        if (faction == null) {
+                            return true;
+                        }
+
+                        int buildingId = Integer.parseInt(args[1]);
+
+                        switch (args[2].toLowerCase()) {
+
+                            case "add":
+
+                                switch (args[3].toLowerCase()) {
+
+                                    case "region":
+
+                                        try {
+                                            this.addRegionToBuilding(player, buildingId); // I will fix it someday... but not today
+                                        } catch (Exception e) {
+                                            PluginInstance.getInstance().consoleError(e);
+                                        }
+
+                                    case "restriction":
+
+                                        Restriction.RestrictionType type = Restriction.RestrictionType.valueOf(args[4].toUpperCase());
+                                        Restriction restriction = new Restriction(type);
+
+                                        try {
+                                            faction.getBuilding(buildingId).addRestriction(restriction);
+                                        } catch (Exception e) {
+                                            PluginInstance.getInstance().consoleError(e);
+                                        }
+                                }
+
+                            case "remove":
+
+                                switch (args[3].toLowerCase()) {
+
+                                    case "region":
+
+                                        try {
+                                            this.addRegionToBuilding(player, buildingId); // I will fix it someday... but not today
+                                        } catch (Exception e) {
+                                            PluginInstance.getInstance().consoleError(e);
+                                        }
+
+                                    case "restriction":
+
+                                        Restriction.RestrictionType type = Restriction.RestrictionType.valueOf(args[4].toUpperCase());
+                                        Restriction restriction = new Restriction(type);
+
+                                        try {
+                                            faction.getBuilding(buildingId).addRestriction(restriction);
+                                        } catch (Exception e) {
+                                            PluginInstance.getInstance().consoleError(e);
+                                        }
+                                }
+
+                            default:
+                                sender.sendMessage("Invalid arguments for building command");
+                        }
+                    } else {
+                        sender.sendMessage("This command can only be executed by a player.");
+                    }
+
                     if (args.length > 3 &&  args[2].equalsIgnoreCase("add") &&
                             args[3].equalsIgnoreCase("region")) {
 
@@ -613,6 +702,22 @@ public final class EnhancedFacilities extends JavaPlugin implements Listener {
                     }
 
                     switch (args[1].toLowerCase()) {
+
+                        case "claim":
+                            if (sender instanceof Player) {
+                                Player player = (Player) sender;
+                                Faction faction = this.getFactionForPlayer(player);
+
+                                if (faction != null) {
+                                    try {
+                                        faction.addChunkAsTerritory(player);
+                                    } catch (Exception e) {
+                                        this.consoleError(e);
+                                    }
+                                }
+
+                            }
+
                         case "create":
                             if (sender instanceof Player) {
                                 Player player = (Player) sender;

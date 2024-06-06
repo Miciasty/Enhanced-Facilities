@@ -468,7 +468,16 @@ public class Faction implements Listener {
 
         for (Territory territory : this.territories) {
             if (territory.overlaps(newTerritory)) {
+
                 player.sendMessage("This chunk is already claimed by another territory.");
+                return;
+
+            }
+        }
+
+        for (Faction faction : PluginInstance.getInstance().getAllFactions()) {
+            if (faction.getTerritory().contains(newTerritory)) {
+                player.sendMessage("This chunk is already claimed by another faction.");
                 return;
             }
         }

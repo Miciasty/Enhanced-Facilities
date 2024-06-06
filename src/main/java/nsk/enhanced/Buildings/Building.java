@@ -87,40 +87,32 @@ public class Building {
         try {
             regions.add(region);
 
-            CompletableFuture.allOf(
-                    PluginInstance.getInstance().saveFactionFromBuilding(this),
-                    PluginInstance.getInstance().saveEntityAsync(this),
-                    PluginInstance.getInstance().saveEntityAsync(region)
-            ).thenRun(() -> {
-                player.sendMessage("This region was successfully added to this building.");
-            }).exceptionally(e -> {
-                regions.remove(region);
-                player.sendMessage("Query failed! This region was not added to this building.");
-                throw new IllegalStateException("Query failed! ", e);
-            });
+            PluginInstance.getInstance().saveFactionFromBuilding(this)
+                .thenRun(() -> {
+                    player.sendMessage("This region was successfully added to this building.");
+                }).exceptionally(e -> {
+                    regions.remove(region);
+                    player.sendMessage("Query failed! This region was not added to this building.");
+                    throw new IllegalStateException("Query failed! ", e);
+                });
         } catch (Exception e) {
             PluginInstance.getInstance().consoleError(e);
         }
     }
     public void addRegion(Region region) {
-        try {
-            for (Region r : regions) {
-                if (r.overlaps(region)) {
-                    throw new IllegalArgumentException("This region overlaps already existing region in this building.");
-                }
+
+        for (Region r : regions) {
+            if (r.overlaps(region)) {
+                throw new IllegalArgumentException("This region overlaps already existing region in this building.");
             }
-            regions.add(region);
-            CompletableFuture.allOf(
-                    PluginInstance.getInstance().saveFactionFromBuilding(this),
-                    PluginInstance.getInstance().saveEntityAsync(this),
-                    PluginInstance.getInstance().saveEntityAsync(region)
-            ).exceptionally(e -> {
+        }
+        regions.add(region);
+        PluginInstance.getInstance().saveFactionFromBuilding(this)
+            .exceptionally(e -> {
                 regions.remove(region);
                 throw new IllegalStateException("Query failed! ", e);
             });
-        } catch (Exception e) {
-            PluginInstance.getInstance().consoleError(e);
-        }
+
     }
 
     public void removeRegion(int Id, Player player) {
@@ -128,16 +120,13 @@ public class Building {
             if (r.getId() == Id) {
                 try {
                     regions.remove(r);
-                    CompletableFuture.allOf(
-                            PluginInstance.getInstance().saveFactionFromBuilding(this),
-                            PluginInstance.getInstance().saveEntityAsync(this),
-                            PluginInstance.getInstance().deleteEntityAsync(r)
-                    ).thenRun(() -> {
-                        player.sendMessage("This region was successfully removed from this building.");
-                    }).exceptionally(e -> {
-                        regions.add(r);
-                        throw new IllegalStateException("Query failed! ", e);
-                    });
+                    PluginInstance.getInstance().saveFactionFromBuilding(this)
+                        .thenRun(() -> {
+                            player.sendMessage("This region was successfully removed from this building.");
+                        }).exceptionally(e -> {
+                            regions.add(r);
+                            throw new IllegalStateException("Query failed! ", e);
+                        });
                 } catch (Exception e) {
                     PluginInstance.getInstance().consoleError(e);
                 }
@@ -148,16 +137,13 @@ public class Building {
         if (regions.contains(region)) {
             try {
                 regions.remove(region);
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveFactionFromBuilding(this),
-                        PluginInstance.getInstance().saveEntityAsync(this),
-                        PluginInstance.getInstance().deleteEntityAsync(region)
-                ).thenRun(() -> {
-                    player.sendMessage("This region was successfully removed from this building.");
-                }).exceptionally(e -> {
-                    regions.add(region);
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveFactionFromBuilding(this)
+                    .thenRun(() -> {
+                        player.sendMessage("This region was successfully removed from this building.");
+                    }).exceptionally(e -> {
+                        regions.add(region);
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } catch (Exception e) {
                 PluginInstance.getInstance().consoleError(e);
             }
@@ -169,14 +155,11 @@ public class Building {
         try {
             if (regions.contains(region)) {
                 this.regions.remove(region);
-                CompletableFuture.allOf(
-                        PluginInstance.getInstance().saveFactionFromBuilding(this),
-                        PluginInstance.getInstance().saveEntityAsync(this),
-                        PluginInstance.getInstance().deleteEntityAsync(region)
-                ).exceptionally(e -> {
-                    regions.add(region);
-                    throw new IllegalStateException("Query failed! ", e);
-                });
+                PluginInstance.getInstance().saveFactionFromBuilding(this)
+                    .exceptionally(e -> {
+                        regions.add(region);
+                        throw new IllegalStateException("Query failed! ", e);
+                    });
             } else {
                 throw new IllegalArgumentException("This region does not exist in this building.");
             }
@@ -254,14 +237,11 @@ public class Building {
     public void addRestriction(Restriction restriction) {
         try {
             this.restrictions.add(restriction);
-            CompletableFuture.allOf(
-                    PluginInstance.getInstance().saveFactionFromBuilding(this),
-                    PluginInstance.getInstance().saveEntityAsync(this),
-                    PluginInstance.getInstance().saveEntityAsync(restriction)
-            ).exceptionally(e -> {
-                restrictions.remove(restriction);
-                throw new IllegalStateException("Query failed! ", e);
-            });
+            PluginInstance.getInstance().saveFactionFromBuilding(this)
+                .exceptionally(e -> {
+                    restrictions.remove(restriction);
+                    throw new IllegalStateException("Query failed! ", e);
+                });
         } catch (Exception e) {
             PluginInstance.getInstance().consoleError(e);
         }
@@ -270,14 +250,11 @@ public class Building {
     public void removeRestriction(Restriction restriction) {
         try {
             this.restrictions.remove(restriction);
-            CompletableFuture.allOf(
-                    PluginInstance.getInstance().saveFactionFromBuilding(this),
-                    PluginInstance.getInstance().saveEntityAsync(this),
-                    PluginInstance.getInstance().deleteEntityAsync(restriction)
-            ).exceptionally(e -> {
-                restrictions.add(restriction);
-                throw new IllegalStateException("Query failed! ", e);
-            });
+            PluginInstance.getInstance().saveFactionFromBuilding(this)
+                .exceptionally(e -> {
+                    restrictions.add(restriction);
+                    throw new IllegalStateException("Query failed! ", e);
+                });
         } catch (Exception e) {
             PluginInstance.getInstance().consoleError(e);
         }
